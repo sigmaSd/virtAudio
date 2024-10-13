@@ -7,16 +7,15 @@ const handler = async (req: Request) => {
   const url = new URL(req.url);
 
   if (url.pathname === "/") {
-    // Get the local IP address
-    const networkInterfaces = Deno.networkInterfaces();
-    const localIP = networkInterfaces.find(
-      (nic) => nic.name !== "lo" && nic.family === "IPv4",
-    )?.address || "localhost";
-    console.log(`Local IP address: ${localIP}`);
+    // Get the public IP address
+    const publicIP = await fetch("https://api.ipify.org").then((res) =>
+      res.text()
+    );
+    console.log(`Public IP address: ${publicIP}`);
 
     // Serve the main page with two QR codes
-    const senderQRCode = await qrcode(`http://${localIP}:8000/sender`);
-    const receiverQRCode = await qrcode(`http://${localIP}:8000/receiver`);
+    const senderQRCode = await qrcode(`http://${publicIP}:8000/sender`);
+    const receiverQRCode = await qrcode(`http://${publicIP}:8000/receiver`);
     const html = `
       <html>
         <body>
@@ -24,12 +23,12 @@ const handler = async (req: Request) => {
           <div>
             <h2>Sender QR Code</h2>
             <pre><img src=${senderQRCode} /></pre>
-            <p>Or open this URL on the sender device: http://${localIP}:8000/sender</p>
+            <p>Or open this URL on the sender device: http://${publicIP}:8000/sender</p>
 div>
           <div>
             <h2>Receiver QR Code</h2>
             <pre><img src=${receiverQRCode} /></pre>
-            <p>Or open this URL on the receiver device: http://${localIP}:8000/receiver</p>
+            <p>Or open this URL on the receiver device: http://${publicIP}:8000/receiver</p>
           </div>
         </body>
       </html>
