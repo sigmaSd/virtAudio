@@ -17,12 +17,12 @@ const handler = async (req: Request) => {
           <div>
             <h2>Sender QR Code</h2>
             <pre><img src=${senderQRCode} /></pre>
-            <p>Or open this URL on the sender device: ${url.origin}/sender</p>
+            <p>Or open this URL on the sender device: <a href="${url.origin}/sender">${url.origin}/sender</a></p>
           </div>
           <div>
             <h2>Receiver QR Code</h2>
             <pre><img src=${receiverQRCode} /></pre>
-            <p>Or open this URL on the receiver device: ${url.origin}/receiver</p>
+            <p>Or open this URL on the receiver device: <a href="${url.origin}/receiver">${url.origin}/receiver</a></p>
           </div>
         </body>
       </html>
@@ -37,8 +37,10 @@ const handler = async (req: Request) => {
         <body>
           <h1>Audio Sender</h1>
           <button id="startBtn">Start Streaming</button>
+          <div id="status"></div>
           <script>
             const startBtn = document.getElementById('startBtn');
+            const statusDiv = document.getElementById('status');
             let ws;
 
             startBtn.onclick = async () => {
@@ -48,6 +50,7 @@ const handler = async (req: Request) => {
 
                 ws.onopen = () => {
                   console.log('WebSocket connected');
+                  statusDiv.textContent = 'Connected, streaming audio...';
                   const audioContext = new AudioContext();
                   const source = audioContext.createMediaStreamSource(stream);
                   const processor = audioContext.createScriptProcessor(1024, 1, 1);
@@ -58,16 +61,22 @@ const handler = async (req: Request) => {
                   processor.onaudioprocess = (e) => {
                     if (ws.readyState === WebSocket.OPEN) {
                       const audioData = e.inputBuffer.getChannelData(0);
-                      ws.send(audioData);
+                      ws.send(audioData.buffer);
                     }
                   };
                 };
 
-                ws.onclose = () => console.log('WebSocket disconnected');
-                ws.onerror = error => console.error('WebSocket error:', error);
+                ws.onclose = () => {
+                  console.log('WebSocket disconnected');
+                  statusDiv.textContent = 'Disconnected';
+                };
+                ws.onerror = error => {
+                  console.error('WebSocket error:', error);
+                  statusDiv.textContent = 'Error: ' + error;
+                };
               } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to start streaming: ' + error.message);
+                statusDiv.textContent = 'Failed to start streaming: ' + error.message;
               }
             };
           </script>
@@ -84,8 +93,10 @@ const handler = async (req: Request) => {
         <body>
           <h1>Audio Receiver</h1>
           <button id="startBtn">Start Receiving</button>
+          <div id="status"></div>
           <script>
             const startBtn = document.getElementById('startBtn');
+            const statusDiv = document.getElementById('status');
             let ws;
             let audioContext;
             let scriptNode;
@@ -97,19 +108,42 @@ const handler = async (req: Request) => {
 
               ws = new WebSocket('wss://' + location.host + '/ws-receiver');
 
-              ws.onopen = () => console.log('WebSocket connected');
-              ws.onclose = () => console.log('WebSocket disconnected');
-              ws.onerror = error => console.error('WebSocket error:', error);
+              ws.onopen = () => {
+                console.log('WebSocket connected');
+                statusDiv.textContent = 'Connected, waiting for audio...';
+              };
+              ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                statusDiv.textContent = 'Disconnected';
+              };
+              ws.onerror = error => {
+                console.error('WebSocket error:', error);
+                statusDiv.textContent = 'Error: ' + error;
+              };
 
-              ws.onmessage = (event) => {
-                const floatArray = new Float32Array(event.data);
-                const buffer = audioContext.createBuffer(1, floatArray.length, audioContext.sampleRate);
-                buffer.getChannelData(0).set(floatArray);
+              ws.onmessage = async (event) => {
+                try {
+                  const arrayBuffer = await event.data.arrayBuffer();
+                  const floatArray = new Float32Array(arrayBuffer);
 
-                const source = audioContext.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioContext.destination);
-                source.start();
+                  if (floatArray.length === 0) {
+                    console.warn('Received empty audio data');
+                    return;
+                  }
+
+                  const buffer = audioContext.createBuffer(1, floatArray.length, audioContext.sampleRate);
+                  buffer.getChannelData(0).set(floatArray);
+
+                  const source = audioContext.createBufferSource();
+                  source.buffer = buffer;
+                  source.connect(audioContext.destination);
+                  source.start();
+
+                  statusDiv.textContent = 'Playing audio...';
+                } catch (error) {
+                  console.error('Error processing audio data:', error);
+                  statusDiv.textContent = 'Error processing audio: ' + error.message;
+                }
               };
             };
           </script>
