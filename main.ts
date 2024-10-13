@@ -59,27 +59,30 @@ function startFFmpegProcess() {
     }
   })();
 
-  // Handle FFmpeg stdout and pipe to ffplay and virtual mic
+  // Handle FFmpeg stdout and pipe to virtual mic using pacat
   (async () => {
-    const playProcess = new Deno.Command("ffplay", {
-      args: ["-f", "wav", "-ar", "48000", "-ac", "2", "-v", "debug", "-"],
+    const pacatProcess = new Deno.Command("pacat", {
+      args: [
+        "--playback",
+        "--device=audiorelay-virtual-mic-sink",
+        "--format=s16le",
+        "--rate=48000",
+        "--channels=2",
+      ],
       stdin: "piped",
     }).spawn();
 
-    const ffplayWriter = playProcess.stdin.getWriter();
-    const virtualMicWriter = await Deno.open("/dev/null", { write: true }); // Replace with your virtual mic device
+    const pacatWriter = pacatProcess.stdin.getWriter();
 
     let totalBytesWritten = 0;
     for await (const chunk of ffmpegProcess.stdout) {
       console.log(`FFmpeg stdout: Received ${chunk.byteLength} bytes`);
       totalBytesWritten += chunk.byteLength;
-      await ffplayWriter.write(chunk);
-      await virtualMicWriter.write(chunk);
+      await pacatWriter.write(chunk);
     }
     console.log(`Total bytes written: ${totalBytesWritten}`);
 
-    ffplayWriter.close();
-    virtualMicWriter.close();
+    pacatWriter.close();
   })();
 }
 
