@@ -3,6 +3,13 @@ import { qrcode } from "https://deno.land/x/qrcode@v2.0.0/mod.ts";
 const senderClients = new Set<WebSocket>();
 const receiverClients = new Set<WebSocket>();
 
+function checkAndDropConnections() {
+  if (senderClients.size === 0 && receiverClients.size === 0) {
+    console.log("All clients disconnected. Dropping pending connections.");
+    // Implement any cleanup or reset logic here if needed
+  }
+}
+
 const handler = async (req: Request) => {
   const url = new URL(req.url);
 
@@ -37,11 +44,15 @@ const handler = async (req: Request) => {
         <body>
           <h1>Audio Sender</h1>
           <button id="startBtn">Start Streaming</button>
+          <button id="stopBtn" disabled>Stop Streaming</button>
           <div id="status"></div>
           <script>
             const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
             const statusDiv = document.getElementById('status');
             let ws;
+            let audioContext;
+            let processor;
 
             startBtn.onclick = async () => {
               try {
@@ -51,9 +62,9 @@ const handler = async (req: Request) => {
                 ws.onopen = () => {
                   console.log('WebSocket connected');
                   statusDiv.textContent = 'Connected, streaming audio...';
-                  const audioContext = new AudioContext();
+                  audioContext = new AudioContext();
                   const source = audioContext.createMediaStreamSource(stream);
-                  const processor = audioContext.createScriptProcessor(1024, 1, 1);
+                  processor = audioContext.createScriptProcessor(1024, 1, 1);
 
                   source.connect(processor);
                   processor.connect(audioContext.destination);
@@ -64,21 +75,45 @@ const handler = async (req: Request) => {
                       ws.send(audioData.buffer);
                     }
                   };
+
+                  startBtn.disabled = true;
+                  stopBtn.disabled = false;
                 };
 
                 ws.onclose = () => {
                   console.log('WebSocket disconnected');
                   statusDiv.textContent = 'Disconnected';
+                  stopStreaming();
                 };
                 ws.onerror = error => {
                   console.error('WebSocket error:', error);
                   statusDiv.textContent = 'Error: ' + error;
+                  stopStreaming();
                 };
               } catch (error) {
                 console.error('Error:', error);
                 statusDiv.textContent = 'Failed to start streaming: ' + error.message;
               }
             };
+
+            stopBtn.onclick = () => {
+              stopStreaming();
+            };
+
+            function stopStreaming() {
+              if (ws) {
+                ws.close();
+              }
+              if (audioContext) {
+                audioContext.close();
+              }
+              if (processor) {
+                processor.disconnect();
+              }
+              startBtn.disabled = false;
+              stopBtn.disabled = true;
+              statusDiv.textContent = 'Stopped';
+            }
           </script>
         </body>
       </html>
@@ -93,9 +128,11 @@ const handler = async (req: Request) => {
         <body>
           <h1>Audio Receiver</h1>
           <button id="startBtn">Start Receiving</button>
+          <button id="stopBtn" disabled>Stop Receiving</button>
           <div id="status"></div>
           <script>
             const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
             const statusDiv = document.getElementById('status');
             let ws;
             let audioContext;
@@ -111,14 +148,18 @@ const handler = async (req: Request) => {
               ws.onopen = () => {
                 console.log('WebSocket connected');
                 statusDiv.textContent = 'Connected, waiting for audio...';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
               };
               ws.onclose = () => {
                 console.log('WebSocket disconnected');
                 statusDiv.textContent = 'Disconnected';
+                stopReceiving();
               };
               ws.onerror = error => {
                 console.error('WebSocket error:', error);
                 statusDiv.textContent = 'Error: ' + error;
+                stopReceiving();
               };
 
               ws.onmessage = async (event) => {
@@ -146,6 +187,25 @@ const handler = async (req: Request) => {
                 }
               };
             };
+
+            stopBtn.onclick = () => {
+              stopReceiving();
+            };
+
+            function stopReceiving() {
+              if (ws) {
+                ws.close();
+              }
+              if (audioContext) {
+                audioContext.close();
+              }
+              if (scriptNode) {
+                scriptNode.disconnect();
+              }
+              startBtn.disabled = false;
+              stopBtn.disabled = true;
+              statusDiv.textContent = 'Stopped';
+            }
           </script>
         </body>
       </html>
@@ -176,6 +236,7 @@ const handler = async (req: Request) => {
     socket.onclose = () => {
       senderClients.delete(socket);
       console.log("Sender client disconnected");
+      checkAndDropConnections();
     };
 
     return response;
@@ -195,6 +256,7 @@ const handler = async (req: Request) => {
     socket.onclose = () => {
       receiverClients.delete(socket);
       console.log("Receiver client disconnected");
+      checkAndDropConnections();
     };
 
     return response;
