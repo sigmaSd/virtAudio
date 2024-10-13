@@ -61,10 +61,15 @@ function startFFmpegProcess() {
 
   // Handle FFmpeg stdout and pipe to virtual mic using pacat
   (async () => {
+    const virtualMicName = Deno.args[0];
+    if (!virtualMicName) {
+      console.error("No virtual mic name specified");
+      Deno.exit(1);
+    }
     const pacatProcess = new Deno.Command("pacat", {
       args: [
         "--playback",
-        "--device=audiorelay-virtual-mic-sink",
+        `--device=${virtualMicName}`,
         "--format=s16le",
         "--rate=48000",
         "--channels=2",
