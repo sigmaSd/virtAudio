@@ -42,7 +42,7 @@ const handler = async (req: Request) => {
             let ws;
 
             startBtn.onclick = () => {
-              ws = new WebSocket('ws://' + location.host + '/ws-sender');
+              ws = new WebSocket('wss://' + location.host + '/ws-sender');
 
               ws.onopen = () => {
                 console.log('WebSocket connected');
@@ -81,7 +81,7 @@ const handler = async (req: Request) => {
           <audio id="audioPlayer" controls></audio>
           <script>
             const audioPlayer = document.getElementById('audioPlayer');
-            const ws = new WebSocket('ws://' + location.host + '/ws-receiver');
+            const ws = new WebSocket('wss://' + location.host + '/ws-receiver');
 
             ws.onopen = () => console.log('WebSocket connected');
             ws.onclose = () => console.log('WebSocket disconnected');
