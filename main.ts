@@ -1,268 +1,196 @@
-import { qrcode } from "https://deno.land/x/qrcode@v2.0.0/mod.ts";
+let ffmpegProcess: Deno.ChildProcess | null = null;
+let ffmpegStdinWriter: WritableStreamDefaultWriter<Uint8Array> | null = null;
+let buffer = new Uint8Array(0);
 
-const senderClients = new Set<WebSocket>();
-const receiverClients = new Set<WebSocket>();
-
-function checkAndDropConnections() {
-  if (senderClients.size === 0 && receiverClients.size === 0) {
-    console.log("All clients disconnected. Dropping pending connections.");
-    // Implement any cleanup or reset logic here if needed
-  }
+function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const c = new Uint8Array(a.length + b.length);
+  c.set(a, 0);
+  c.set(b, a.length);
+  return c;
 }
 
-const handler = async (req: Request) => {
-  const url = new URL(req.url);
+const WEBM_HEADER_ID = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]);
 
-  if (url.pathname === "/") {
-    // Serve the main page with two QR codes
-    const senderQRCode = await qrcode(`${url.origin}/sender`);
-    const receiverQRCode = await qrcode(`${url.origin}/receiver`);
-    const html = `
-      <html>
-        <body>
-          <h1>Audio Streaming System</h1>
-          <div>
-            <h2>Sender QR Code</h2>
-            <pre><img src=${senderQRCode} /></pre>
-            <p>Or open this URL on the sender device: <a href="${url.origin}/sender">${url.origin}/sender</a></p>
-          </div>
-          <div>
-            <h2>Receiver QR Code</h2>
-            <pre><img src=${receiverQRCode} /></pre>
-            <p>Or open this URL on the receiver device: <a href="${url.origin}/receiver">${url.origin}/receiver</a></p>
-          </div>
-        </body>
-      </html>
-    `;
-    return new Response(html, { headers: { "Content-Type": "text/html" } });
-  }
-
-  if (url.pathname === "/sender") {
-    // Serve the sender page
-    const html = `
-      <html>
-        <body>
-          <h1>Audio Sender</h1>
-          <button id="startBtn">Start Streaming</button>
-          <button id="stopBtn" disabled>Stop Streaming</button>
-          <div id="status"></div>
-          <script>
-            const startBtn = document.getElementById('startBtn');
-            const stopBtn = document.getElementById('stopBtn');
-            const statusDiv = document.getElementById('status');
-            let ws;
-            let audioContext;
-            let processor;
-
-            startBtn.onclick = async () => {
-              try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                ws = new WebSocket('wss://' + location.host + '/ws-sender');
-
-                ws.onopen = () => {
-                  console.log('WebSocket connected');
-                  statusDiv.textContent = 'Connected, streaming audio...';
-                  audioContext = new AudioContext();
-                  const source = audioContext.createMediaStreamSource(stream);
-                  processor = audioContext.createScriptProcessor(1024, 1, 1);
-
-                  source.connect(processor);
-                  processor.connect(audioContext.destination);
-
-                  processor.onaudioprocess = (e) => {
-                    if (ws.readyState === WebSocket.OPEN) {
-                      const audioData = e.inputBuffer.getChannelData(0);
-                      ws.send(audioData.buffer);
-                    }
-                  };
-
-                  startBtn.disabled = true;
-                  stopBtn.disabled = false;
-                };
-
-                ws.onclose = () => {
-                  console.log('WebSocket disconnected');
-                  statusDiv.textContent = 'Disconnected';
-                  stopStreaming();
-                };
-                ws.onerror = error => {
-                  console.error('WebSocket error:', error);
-                  statusDiv.textContent = 'Error: ' + error;
-                  stopStreaming();
-                };
-              } catch (error) {
-                console.error('Error:', error);
-                statusDiv.textContent = 'Failed to start streaming: ' + error.message;
-              }
-            };
-
-            stopBtn.onclick = () => {
-              stopStreaming();
-            };
-
-            function stopStreaming() {
-              if (ws) {
-                ws.close();
-              }
-              if (audioContext) {
-                audioContext.close();
-              }
-              if (processor) {
-                processor.disconnect();
-              }
-              startBtn.disabled = false;
-              stopBtn.disabled = true;
-              statusDiv.textContent = 'Stopped';
-            }
-          </script>
-        </body>
-      </html>
-    `;
-    return new Response(html, { headers: { "Content-Type": "text/html" } });
-  }
-
-  if (url.pathname === "/receiver") {
-    // Serve the receiver page
-    const html = `
-      <html>
-        <body>
-          <h1>Audio Receiver</h1>
-          <button id="startBtn">Start Receiving</button>
-          <button id="stopBtn" disabled>Stop Receiving</button>
-          <div id="status"></div>
-          <script>
-            const startBtn = document.getElementById('startBtn');
-            const stopBtn = document.getElementById('stopBtn');
-            const statusDiv = document.getElementById('status');
-            let ws;
-            let audioContext;
-            let scriptNode;
-
-            startBtn.onclick = () => {
-              audioContext = new (window.AudioContext || window.webkitAudioContext)();
-              scriptNode = audioContext.createScriptProcessor(1024, 1, 1);
-              scriptNode.connect(audioContext.destination);
-
-              ws = new WebSocket('wss://' + location.host + '/ws-receiver');
-
-              ws.onopen = () => {
-                console.log('WebSocket connected');
-                statusDiv.textContent = 'Connected, waiting for audio...';
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-              };
-              ws.onclose = () => {
-                console.log('WebSocket disconnected');
-                statusDiv.textContent = 'Disconnected';
-                stopReceiving();
-              };
-              ws.onerror = error => {
-                console.error('WebSocket error:', error);
-                statusDiv.textContent = 'Error: ' + error;
-                stopReceiving();
-              };
-
-              ws.onmessage = async (event) => {
-                try {
-                  const arrayBuffer = await event.data.arrayBuffer();
-                  const floatArray = new Float32Array(arrayBuffer);
-
-                  if (floatArray.length === 0) {
-                    console.warn('Received empty audio data');
-                    return;
-                  }
-
-                  const buffer = audioContext.createBuffer(1, floatArray.length, audioContext.sampleRate);
-                  buffer.getChannelData(0).set(floatArray);
-
-                  const source = audioContext.createBufferSource();
-                  source.buffer = buffer;
-                  source.connect(audioContext.destination);
-                  source.start();
-
-                  statusDiv.textContent = 'Playing audio...';
-                } catch (error) {
-                  console.error('Error processing audio data:', error);
-                  statusDiv.textContent = 'Error processing audio: ' + error.message;
-                }
-              };
-            };
-
-            stopBtn.onclick = () => {
-              stopReceiving();
-            };
-
-            function stopReceiving() {
-              if (ws) {
-                ws.close();
-              }
-              if (audioContext) {
-                audioContext.close();
-              }
-              if (scriptNode) {
-                scriptNode.disconnect();
-              }
-              startBtn.disabled = false;
-              stopBtn.disabled = true;
-              statusDiv.textContent = 'Stopped';
-            }
-          </script>
-        </body>
-      </html>
-    `;
-    return new Response(html, { headers: { "Content-Type": "text/html" } });
-  }
-
-  if (url.pathname === "/ws-sender") {
-    if (req.headers.get("upgrade") != "websocket") {
-      return new Response(null, { status: 501 });
+function findWebMHeader(data: Uint8Array): number {
+  for (let i = 0; i < data.length - WEBM_HEADER_ID.length; i++) {
+    if (
+      data.slice(i, i + WEBM_HEADER_ID.length).every((v, j) =>
+        v === WEBM_HEADER_ID[j]
+      )
+    ) {
+      return i;
     }
-    const { socket, response } = Deno.upgradeWebSocket(req);
+  }
+  return -1;
+}
 
-    socket.onopen = () => {
-      senderClients.add(socket);
-      console.log("Sender client connected");
-    };
+function startFFmpegProcess() {
+  console.log("Starting FFmpeg process");
+  ffmpegProcess = new Deno.Command("ffmpeg", {
+    args: [
+      "-f",
+      "webm",
+      "-i",
+      "pipe:0",
+      "-acodec",
+      "pcm_s16le",
+      "-f",
+      "wav",
+      "-ac",
+      "2",
+      "-ar",
+      "48000",
+      "-v",
+      "debug",
+      "pipe:1",
+    ],
+    stdin: "piped",
+    stdout: "piped",
+    stderr: "piped",
+  }).spawn();
 
-    socket.onmessage = (event) => {
-      // Forward the audio data to all receiver clients
-      for (const receiver of receiverClients) {
-        if (receiver.readyState === WebSocket.OPEN) {
-          receiver.send(event.data);
+  ffmpegStdinWriter = ffmpegProcess.stdin.getWriter();
+
+  // Handle FFmpeg stderr
+  (async () => {
+    const decoder = new TextDecoder();
+    for await (const chunk of ffmpegProcess.stderr) {
+      console.error("FFmpeg stderr:", decoder.decode(chunk));
+    }
+  })();
+
+  // Handle FFmpeg stdout and pipe to ffplay and virtual mic
+  (async () => {
+    const playProcess = new Deno.Command("ffplay", {
+      args: ["-f", "wav", "-ar", "48000", "-ac", "2", "-v", "debug", "-"],
+      stdin: "piped",
+    }).spawn();
+
+    const ffplayWriter = playProcess.stdin.getWriter();
+    const virtualMicWriter = await Deno.open("/dev/null", { write: true }); // Replace with your virtual mic device
+
+    let totalBytesWritten = 0;
+    for await (const chunk of ffmpegProcess.stdout) {
+      console.log(`FFmpeg stdout: Received ${chunk.byteLength} bytes`);
+      totalBytesWritten += chunk.byteLength;
+      await ffplayWriter.write(chunk);
+      await virtualMicWriter.write(chunk);
+    }
+    console.log(`Total bytes written: ${totalBytesWritten}`);
+
+    ffplayWriter.close();
+    virtualMicWriter.close();
+  })();
+}
+
+const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Streaming</title>
+</head>
+<body>
+    <h1>Audio Streaming</h1>
+    <button id="startButton">Start Streaming</button>
+    <script>
+        const startButton = document.getElementById('startButton');
+        let mediaRecorder;
+        let socket;
+        let isStreaming = false;
+        let headerSent = false;
+
+        startButton.addEventListener('click', async () => {
+            if (!isStreaming) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+
+                socket = new WebSocket(\`ws://\${window.location.host}/ws\`);
+                socket.onopen = () => {
+                    console.log('WebSocket connected');
+                    mediaRecorder.start(1000);
+                    startButton.textContent = 'Stop Streaming';
+                    isStreaming = true;
+                };
+
+                mediaRecorder.ondataavailable = async (event) => {
+                    if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+                        console.log(\`Sending chunk of size: \${event.data.size} bytes\`);
+                        const arrayBuffer = await event.data.arrayBuffer();
+                        const uint8Array = new Uint8Array(arrayBuffer);
+                        console.log(\`First 32 bytes: \${Array.from(uint8Array.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join(' ')}\`);
+                        await socket.send(event.data);
+                    }
+                };
+            } else {
+                mediaRecorder.stop();
+                socket.close();
+                startButton.textContent = 'Start Streaming';
+                isStreaming = false;
+                headerSent = false;
+            }
+        });
+    </script>
+</body>
+</html>
+`;
+
+Deno.serve((request) => {
+  if (request.url.endsWith("/ws")) {
+    const { socket, response } = Deno.upgradeWebSocket(request);
+    console.log("WebSocket connection opened");
+
+    socket.onmessage = async (event) => {
+      if (event.data instanceof ArrayBuffer) {
+        const chunk = new Uint8Array(event.data);
+        console.log(`Received chunk of size: ${chunk.length} bytes`);
+        console.log(
+          `First 32 bytes: ${
+            Array.from(chunk.slice(0, 32)).map((b) =>
+              b.toString(16).padStart(2, "0")
+            ).join(" ")
+          }`,
+        );
+
+        buffer = concatUint8Arrays(buffer, chunk);
+
+        if (!ffmpegProcess) {
+          const headerIndex = findWebMHeader(buffer);
+          if (headerIndex !== -1) {
+            console.log(`WebM header found at index ${headerIndex}`);
+            startFFmpegProcess();
+          }
+        }
+
+        if (ffmpegStdinWriter) {
+          await ffmpegStdinWriter.write(buffer);
+          buffer = new Uint8Array(0);
         }
       }
     };
 
-    socket.onclose = () => {
-      senderClients.delete(socket);
-      console.log("Sender client disconnected");
-      checkAndDropConnections();
+    socket.onclose = async () => {
+      console.log("WebSocket connection closed");
+      if (buffer.length > 0 && ffmpegStdinWriter) {
+        await ffmpegStdinWriter.write(buffer);
+      }
+      ffmpegStdinWriter?.close();
+      try {
+        ffmpegProcess?.kill("SIGTERM");
+      } catch {
+        /*   */
+      }
+      ffmpegProcess = null;
+      ffmpegStdinWriter = null;
+    };
+
+    socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
     };
 
     return response;
+  } else {
+    return new Response(html, {
+      headers: { "content-type": "text/html" },
+    });
   }
-
-  if (url.pathname === "/ws-receiver") {
-    if (req.headers.get("upgrade") != "websocket") {
-      return new Response(null, { status: 501 });
-    }
-    const { socket, response } = Deno.upgradeWebSocket(req);
-
-    socket.onopen = () => {
-      receiverClients.add(socket);
-      console.log("Receiver client connected");
-    };
-
-    socket.onclose = () => {
-      receiverClients.delete(socket);
-      console.log("Receiver client disconnected");
-      checkAndDropConnections();
-    };
-
-    return response;
-  }
-
-  return new Response("Not Found", { status: 404 });
-};
-
-Deno.serve(handler);
+});
