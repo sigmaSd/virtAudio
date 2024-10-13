@@ -7,15 +7,9 @@ const handler = async (req: Request) => {
   const url = new URL(req.url);
 
   if (url.pathname === "/") {
-    // Get the public IP address
-    const publicIP = await fetch("https://api.ipify.org").then((res) =>
-      res.text()
-    );
-    console.log(`Public IP address: ${publicIP}`);
-
     // Serve the main page with two QR codes
-    const senderQRCode = await qrcode(`http://${publicIP}/sender`);
-    const receiverQRCode = await qrcode(`http://${publicIP}/receiver`);
+    const senderQRCode = await qrcode(`${url.origin}/sender`);
+    const receiverQRCode = await qrcode(`${url.origin}/receiver`);
     const html = `
       <html>
         <body>
@@ -23,12 +17,12 @@ const handler = async (req: Request) => {
           <div>
             <h2>Sender QR Code</h2>
             <pre><img src=${senderQRCode} /></pre>
-            <p>Or open this URL on the sender device: http://${publicIP}/sender</p>
-div>
+            <p>Or open this URL on the sender device: ${url.origin}/sender</p>
+          </div>
           <div>
             <h2>Receiver QR Code</h2>
             <pre><img src=${receiverQRCode} /></pre>
-            <p>Or open this URL on the receiver device: http://${publicIP}/receiver</p>
+            <p>Or open this URL on the receiver device: ${url.origin}/receiver</p>
           </div>
         </body>
       </html>
