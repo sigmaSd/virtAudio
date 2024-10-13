@@ -41,29 +41,34 @@ const handler = async (req: Request) => {
             const startBtn = document.getElementById('startBtn');
             let ws;
 
-            startBtn.onclick = () => {
-              ws = new WebSocket('wss://' + location.host + '/ws-sender');
+            startBtn.onclick = async () => {
+              try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                ws = new WebSocket('wss://' + location.host + '/ws-sender');
 
-              ws.onopen = () => {
-                console.log('WebSocket connected');
+                ws.onopen = () => {
+                  console.log('WebSocket connected');
+                  const audioContext = new AudioContext();
+                  const source = audioContext.createMediaStreamSource(stream);
+                  const processor = audioContext.createScriptProcessor(1024, 1, 1);
 
-                try {
-                  navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(stream => {
-                      const mediaRecorder = new MediaRecorder(stream);
-                      mediaRecorder.ondataavailable = event => {
-                        if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-                          ws.send(event.data);
-                        }
-                      };
-                      mediaRecorder.start(100);
-                    })
-                    .catch(alert);
-                } catch(e) { alert(e); }
-              };
+                  source.connect(processor);
+                  processor.connect(audioContext.destination);
 
-              ws.onclose = () => console.log('WebSocket disconnected');
-              ws.onerror = error => console.error('WebSocket error:', error);
+                  processor.onaudioprocess = (e) => {
+                    if (ws.readyState === WebSocket.OPEN) {
+                      const audioData = e.inputBuffer.getChannelData(0);
+                      ws.send(audioData);
+                    }
+                  };
+                };
+
+                ws.onclose = () => console.log('WebSocket disconnected');
+                ws.onerror = error => console.error('WebSocket error:', error);
+              } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to start streaming: ' + error.message);
+              }
             };
           </script>
         </body>
@@ -78,20 +83,34 @@ const handler = async (req: Request) => {
       <html>
         <body>
           <h1>Audio Receiver</h1>
-          <audio id="audioPlayer" controls></audio>
+          <button id="startBtn">Start Receiving</button>
           <script>
-            const audioPlayer = document.getElementById('audioPlayer');
-            const ws = new WebSocket('wss://' + location.host + '/ws-receiver');
+            const startBtn = document.getElementById('startBtn');
+            let ws;
+            let audioContext;
+            let scriptNode;
 
-            ws.onopen = () => console.log('WebSocket connected');
-            ws.onclose = () => console.log('WebSocket disconnected');
-            ws.onerror = error => console.error('WebSocket error:', error);
+            startBtn.onclick = () => {
+              audioContext = new (window.AudioContext || window.webkitAudioContext)();
+              scriptNode = audioContext.createScriptProcessor(1024, 1, 1);
+              scriptNode.connect(audioContext.destination);
 
-            ws.onmessage = (event) => {
-              const audioBlob = event.data;
-              const audioUrl = URL.createObjectURL(audioBlob);
-              audioPlayer.src = audioUrl;
-              audioPlayer.play().catch(console.error);
+              ws = new WebSocket('wss://' + location.host + '/ws-receiver');
+
+              ws.onopen = () => console.log('WebSocket connected');
+              ws.onclose = () => console.log('WebSocket disconnected');
+              ws.onerror = error => console.error('WebSocket error:', error);
+
+              ws.onmessage = (event) => {
+                const floatArray = new Float32Array(event.data);
+                const buffer = audioContext.createBuffer(1, floatArray.length, audioContext.sampleRate);
+                buffer.getChannelData(0).set(floatArray);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                source.start();
+              };
             };
           </script>
         </body>
