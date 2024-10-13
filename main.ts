@@ -14,8 +14,8 @@ const handler = async (req: Request) => {
     console.log(`Public IP address: ${publicIP}`);
 
     // Serve the main page with two QR codes
-    const senderQRCode = await qrcode(`http://${publicIP}:8000/sender`);
-    const receiverQRCode = await qrcode(`http://${publicIP}:8000/receiver`);
+    const senderQRCode = await qrcode(`http://${publicIP}/sender`);
+    const receiverQRCode = await qrcode(`http://${publicIP}/receiver`);
     const html = `
       <html>
         <body>
@@ -23,12 +23,12 @@ const handler = async (req: Request) => {
           <div>
             <h2>Sender QR Code</h2>
             <pre><img src=${senderQRCode} /></pre>
-            <p>Or open this URL on the sender device: http://${publicIP}:8000/sender</p>
+            <p>Or open this URL on the sender device: http://${publicIP}/sender</p>
 div>
           <div>
             <h2>Receiver QR Code</h2>
             <pre><img src=${receiverQRCode} /></pre>
-            <p>Or open this URL on the receiver device: http://${publicIP}:8000/receiver</p>
+            <p>Or open this URL on the receiver device: http://${publicIP}/receiver</p>
           </div>
         </body>
       </html>
@@ -156,7 +156,4 @@ div>
   return new Response("Not Found", { status: 404 });
 };
 
-const port = 8000;
-console.log(`Server running on http://localhost:${port}`);
-
-Deno.serve({ port }, handler);
+Deno.serve(handler);
