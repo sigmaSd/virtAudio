@@ -120,7 +120,9 @@ function startFFmpegProcess() {
   })();
 }
 
-const html = Deno.readTextFileSync("client.html");
+const html = await fetch(import.meta.resolve("./client.html")).then((res) =>
+  res.text()
+);
 
 Deno.serve({ port: port }, async (request) => {
   if (request.url.endsWith("/ws")) {

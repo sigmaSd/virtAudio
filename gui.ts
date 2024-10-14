@@ -6,7 +6,7 @@ interface MainWindow {
   set_selected_mic: (mic: string) => void;
   Logic: {
     createVirtualMic: (name: string) => void;
-    startServer: (mic: string) => void;
+    startServer: () => void;
     stopServer: () => void;
     playAudio: (mic: string) => void;
     stopAudio: () => void;
@@ -16,8 +16,11 @@ interface MainWindow {
 
 // https://github.com/slint-ui/slint/issues/5780
 Deno.env.set("WAYLAND_DISPLAY", "");
+const guiSlint = await fetch(import.meta.resolve("./gui.slint")).then((r) =>
+  r.text()
+);
 // deno-lint-ignore no-explicit-any
-const ui = slint.loadFile("gui.slint") as any;
+const ui = slint.loadSource(guiSlint, "main.js") as any;
 const window = ui.MainWindow();
 const port = Number.parseInt(Deno.env.get("PORT") || "8000");
 
@@ -26,11 +29,10 @@ let po: Deno.ChildProcess | null = null;
 let serverProcess: Deno.ChildProcess | null = null;
 
 // Function to start the server
-function startServer(virtualMic: string) {
+function startServer() {
   serverProcess = new Deno.Command(Deno.execPath(), {
-    args: ["run", "--allow-all", "main.ts", virtualMic],
+    args: ["run", "--allow-all", import.meta.resolve("./main.ts")],
     stdout: "piped",
-    stderr: "piped",
   }).spawn();
 
   // Monitor server output for client connections
@@ -91,8 +93,8 @@ function stopAudio() {
   window.is_audio_playing = false;
 }
 
-window.Logic.startServer = (mic: string) => {
-  startServer(mic);
+window.Logic.startServer = () => {
+  startServer();
 };
 
 window.Logic.stopServer = () => {

@@ -1,7 +1,7 @@
 import { Button, ComboBox, VerticalBox, LineEdit, HorizontalBox } from "std-widgets.slint";
 
 export global Logic {
-    callback startServer(string);
+    callback startServer();
     callback stopServer();
     callback playAudio(string);
     callback stopAudio();
@@ -38,7 +38,7 @@ export component MainWindow inherits Window {
                 primary: !root.is-server-running;
                 clicked => {
                     if (!root.is-server-running) {
-                        Logic.startServer(root.selected_mic);
+                        Logic.startServer();
                         root.is-server-running = true;
                     } else {
                         Logic.stopServer();
