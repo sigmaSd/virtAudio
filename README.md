@@ -29,7 +29,7 @@ A web-based audio streaming solution with a graphical user interface. Captures a
 
 2. Use the GUI to start/stop the streaming server.
 
-3. For web interface:
+3. You can now connect to the server from any local web client (for example from your phone):
    - Open a browser and go to `http://<your-local-ip>:8000`
    - Use the "Start/Stop Streaming" buttons to control audio capture
 
