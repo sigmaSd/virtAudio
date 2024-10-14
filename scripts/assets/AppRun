@@ -1,0 +1,6 @@
+#!/bin/bash
+SELF=$(readlink -f "$0")
+HERE=${SELF%/*}
+
+# Run the app
+exec "${HERE}/usr/bin/deno" run --allow-all --cached-only gui.ts "$@"
