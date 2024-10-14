@@ -1,0 +1,52 @@
+import { Button, ComboBox, VerticalBox } from "std-widgets.slint";
+
+export global Logic {
+    callback createVirtualMic(string);
+    callback startServer(string);
+    callback playAudio(string);
+    callback getRandomNumber() -> int;
+}
+
+export component MainWindow inherits Window {
+    width: 400px;
+    height: 300px;
+    title: "Virtual Audio Streamer";
+
+    in-out property <[string]> virtual_mics: [];
+    in-out property <string> selected_mic: "";
+    out property <bool> is-server-running: false;
+    in property <string> localIp;
+
+    VerticalBox {
+        ComboBox {
+            model: root.virtual_mics;
+            selected(mic) => {
+                root.selected_mic = mic;
+            }
+        }
+
+        Button {
+            text: "Create New Virtual Mic";
+            clicked => {
+                Logic.createVirtualMic("new-virtual-mic-" + Logic.getRandomNumber());
+            }
+        }
+
+        Button {
+            text: root.is-server-running ? "Server Running at " + localIp : "Start Server";
+            clicked => {
+                if (!root.is-server-running) {
+                    Logic.startServer(root.selected_mic);
+                    root.is-server-running = true;
+                }
+            }
+        }
+
+        Button {
+            text: "Play Audio";
+            clicked => {
+                Logic.playAudio(root.selected_mic);
+            }
+        }
+    }
+}

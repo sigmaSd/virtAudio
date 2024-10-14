@@ -1,6 +1,12 @@
 let ffmpegProcess: Deno.ChildProcess | null = null;
 let ffmpegStdinWriter: WritableStreamDefaultWriter<Uint8Array> | null = null;
 let buffer = new Uint8Array(0);
+const virtualMicName = Deno.args[0];
+if (!virtualMicName) {
+  console.error("No virtual mic name specified");
+  Deno.exit(1);
+}
+const port = Number.parseInt(Deno.env.get("PORT") || "8000");
 
 function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
   const c = new Uint8Array(a.length + b.length);
@@ -61,33 +67,49 @@ function startFFmpegProcess() {
 
   // Handle FFmpeg stdout and pipe to virtual mic using pacat
   (async () => {
-    const virtualMicName = Deno.args[0];
-    if (!virtualMicName) {
-      console.error("No virtual mic name specified");
-      Deno.exit(1);
+    const virtualMicPipe = "/tmp/virtual_mic_pipe";
+
+    // Create the named pipe if it doesn't exist
+    try {
+      await Deno.stat(virtualMicPipe);
+    } catch {
+      await new Deno.Command("mkfifo", { args: [virtualMicPipe] }).spawn()
+        .status;
     }
-    const pacatProcess = new Deno.Command("pacat", {
+
+    // Load the module-pipe-source
+    const paProcess = new Deno.Command("pactl", {
       args: [
-        "--playback",
-        `--device=${virtualMicName}`,
-        "--format=s16le",
-        "--rate=48000",
-        "--channels=2",
+        "load-module",
+        "module-pipe-source",
+        `source_name=${virtualMicName}`,
+        `file=${virtualMicPipe}`,
+        "format=s16le",
+        "rate=48000",
+        "channels=2",
       ],
-      stdin: "piped",
     }).spawn();
 
-    const pacatWriter = pacatProcess.stdin.getWriter();
+    // Wait for the module to load
+    await paProcess.status;
 
+    // Open the pipe for writing
+    const pipeWriter = await Deno.open(virtualMicPipe, { write: true });
+
+    // Write FFmpeg output to the pipe
     let totalBytesWritten = 0;
     for await (const chunk of ffmpegProcess.stdout) {
       console.log(`FFmpeg stdout: Received ${chunk.byteLength} bytes`);
       totalBytesWritten += chunk.byteLength;
-      await pacatWriter.write(chunk);
+      await pipeWriter.write(chunk);
     }
-    console.log(`Total bytes written: ${totalBytesWritten}`);
+    console.log(`Total bytes written to virtual mic: ${totalBytesWritten}`);
 
-    pacatWriter.close();
+    // Clean up
+    pipeWriter.close();
+    await Deno.run({ cmd: ["pactl", "unload-module", "module-pipe-source"] })
+      .status();
+    await Deno.remove(virtualMicPipe);
   })();
 }
 
@@ -142,7 +164,7 @@ const html = `
 </html>
 `;
 
-Deno.serve((request) => {
+Deno.serve({ port: port }, (request) => {
   if (request.url.endsWith("/ws")) {
     const { socket, response } = Deno.upgradeWebSocket(request);
     console.log("WebSocket connection opened");
@@ -196,6 +218,10 @@ Deno.serve((request) => {
     };
 
     return response;
+  } else if (request.url.endsWith("/stop")) {
+    // stop the server and exit
+    setTimeout(() => Deno.exit(0), 100);
+    return new Response();
   } else {
     return new Response(html, {
       headers: { "content-type": "text/html" },
