@@ -38,6 +38,6 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ github.ref_name }}
-          files: ./Bandito-x86_64.AppImage
+          files: ./Virtual_Microphone-x86_64.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
