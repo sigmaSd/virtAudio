@@ -18,6 +18,7 @@ export component MainWindow inherits Window {
     in-out property <string> selected_mic: "";
     out property <bool> is-server-running: false;
     in-out property <bool> is-audio-playing: false;
+    in-out property <bool> is-client-connected: false;
     in property <string> localIp;
     property <string> new-mic-name: "";
 
@@ -42,6 +43,8 @@ export component MainWindow inherits Window {
                     } else {
                         Logic.stopServer();
                         root.is-server-running = false;
+                        root.is-client-connected = false;
+                        root.is-audio-playing = false;
                     }
                 }
             }
@@ -52,10 +55,15 @@ export component MainWindow inherits Window {
             }
         }
 
-        HorizontalBox {
+        if (root.is-server-running && !root.is-client-connected): Text {
+            text: "Waiting for client to connect...";
+            font-size: 16px;
+            horizontal-alignment: center;
+        }
+
+        if (root.is-server-running && root.is-client-connected): HorizontalBox {
             Button {
                 text: root.is-audio-playing ? "Stop Audio" : "Play Microphone Audio";
-                enabled: root.is-server-running;
                 clicked => {
                     if (!root.is-audio-playing) {
                         Logic.playAudio(root.selected_mic);

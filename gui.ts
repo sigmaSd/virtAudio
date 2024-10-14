@@ -23,12 +23,31 @@ const port = Number.parseInt(Deno.env.get("PORT") || "8000");
 
 let pi: Deno.ChildProcess | null = null;
 let po: Deno.ChildProcess | null = null;
+let serverProcess: Deno.ChildProcess | null = null;
 
 // Function to start the server
 function startServer(virtualMic: string) {
-  new Deno.Command(Deno.execPath(), {
+  serverProcess = new Deno.Command(Deno.execPath(), {
     args: ["run", "--allow-all", "main.ts", virtualMic],
+    stdout: "piped",
+    stderr: "piped",
   }).spawn();
+
+  // Monitor server output for client connections
+  const decoder = new TextDecoder();
+  (async () => {
+    if (serverProcess && serverProcess.stdout) {
+      for await (const chunk of serverProcess.stdout) {
+        const output = decoder.decode(chunk);
+        if (output.includes("WebSocket connection opened")) {
+          window.is_client_connected = true;
+        } else if (output.includes("WebSocket connection closed")) {
+          window.is_client_connected = false;
+          stopAudio();
+        }
+      }
+    }
+  })();
 }
 
 // Function to stop the server
@@ -58,7 +77,6 @@ async function playAudio() {
     while (true) {
       const chunk = await reader.read();
       if (chunk.done) break;
-      console.log("writing chunk ", chunk.value.length);
       await writer.write(chunk.value);
     }
   }
