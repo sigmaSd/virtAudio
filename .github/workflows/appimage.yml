@@ -1,8 +1,9 @@
 name: Build and Release AppImage
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - '*'
 
 permissions:
   contents: write
