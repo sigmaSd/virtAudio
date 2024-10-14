@@ -54,7 +54,7 @@ export component MainWindow inherits Window {
 
         HorizontalBox {
             Button {
-                text: root.is-audio-playing ? "Stop Audio" : "Play Audio";
+                text: root.is-audio-playing ? "Stop Audio" : "Play Microphone Audio";
                 enabled: root.is-server-running;
                 clicked => {
                     if (!root.is-audio-playing) {

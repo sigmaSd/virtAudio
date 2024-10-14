@@ -14,6 +14,8 @@ interface MainWindow {
   };
 }
 
+// https://github.com/slint-ui/slint/issues/5780
+Deno.env.set("WAYLAND_DISPLAY", "");
 // deno-lint-ignore no-explicit-any
 const ui = slint.loadFile("gui.slint") as any;
 const window = ui.MainWindow();
