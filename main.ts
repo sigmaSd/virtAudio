@@ -1,12 +1,15 @@
 let ffmpegProcess: Deno.ChildProcess | null = null;
 let ffmpegStdinWriter: WritableStreamDefaultWriter<Uint8Array> | null = null;
 let buffer = new Uint8Array(0);
-const virtualMicName = Deno.args[0];
-if (!virtualMicName) {
-  console.error("No virtual mic name specified");
-  Deno.exit(1);
-}
 const port = Number.parseInt(Deno.env.get("PORT") || "8000");
+
+Deno.addSignalListener("SIGINT", () => {
+  new Deno.Command("pactl", {
+    args: ["unload-module", "module-pipe-source"],
+    stderr: "null",
+  }).spawn();
+  Deno.exit(0);
+});
 
 function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
   const c = new Uint8Array(a.length + b.length);
@@ -82,7 +85,7 @@ function startFFmpegProcess() {
       args: [
         "load-module",
         "module-pipe-source",
-        `source_name=${virtualMicName}`,
+        `source_name=VirtualMic`,
         `file=${virtualMicPipe}`,
         "format=s16le",
         "rate=48000",
@@ -107,8 +110,10 @@ function startFFmpegProcess() {
 
     // Clean up
     pipeWriter.close();
-    await Deno.run({ cmd: ["pactl", "unload-module", "module-pipe-source"] })
-      .status();
+    await new Deno.Command("pactl", {
+      args: ["unload-module", "module-pipe-source"],
+    }).spawn()
+      .status;
     await Deno.remove(virtualMicPipe);
   })();
 }
@@ -164,7 +169,7 @@ const html = `
 </html>
 `;
 
-Deno.serve({ port: port }, (request) => {
+Deno.serve({ port: port }, async (request) => {
   if (request.url.endsWith("/ws")) {
     const { socket, response } = Deno.upgradeWebSocket(request);
     console.log("WebSocket connection opened");
@@ -220,6 +225,11 @@ Deno.serve({ port: port }, (request) => {
     return response;
   } else if (request.url.endsWith("/stop")) {
     // stop the server and exit
+    console.log("called");
+    await new Deno.Command("pactl", {
+      args: ["unload-module", "module-pipe-source"],
+      stderr: "null",
+    }).spawn().status;
     setTimeout(() => Deno.exit(0), 100);
     return new Response();
   } else {

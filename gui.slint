@@ -1,7 +1,6 @@
 import { Button, ComboBox, VerticalBox } from "std-widgets.slint";
 
 export global Logic {
-    callback createVirtualMic(string);
     callback startServer(string);
     callback playAudio(string);
     callback getRandomNumber() -> int;
@@ -18,20 +17,6 @@ export component MainWindow inherits Window {
     in property <string> localIp;
 
     VerticalBox {
-        ComboBox {
-            model: root.virtual_mics;
-            selected(mic) => {
-                root.selected_mic = mic;
-            }
-        }
-
-        Button {
-            text: "Create New Virtual Mic";
-            clicked => {
-                Logic.createVirtualMic("new-virtual-mic-" + Logic.getRandomNumber());
-            }
-        }
-
         Button {
             text: root.is-server-running ? "Server Running at " + localIp : "Start Server";
             clicked => {
@@ -44,6 +29,7 @@ export component MainWindow inherits Window {
 
         Button {
             text: "Play Audio";
+            visible: root.is-server-running;
             clicked => {
                 Logic.playAudio(root.selected_mic);
             }
