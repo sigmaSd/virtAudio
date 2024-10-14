@@ -1,6 +1,10 @@
 # Virtual Audio Streaming
 
-A web-based audio streaming solution with a graphical user interface. Captures audio from the user's microphone, streams it to a server, and plays it back through a virtual microphone sink.
+A web-based audio streaming solution with a graphical user interface. Captures audio from the user's microphone, streams it to a server, and plays it back through a virtual microphone sink. (linux only for now)
+
+This allow you to use your phone for example as a microphone for the pc.
+
+![image](https://github.com/user-attachments/assets/68260d94-67d5-4ffa-8e24-975a80784dc6)
 
 ## Features
 
