@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Virtual Microphone
+Exec=AppRun
+Icon=vmic
+Type=Application
+Categories=Utility;

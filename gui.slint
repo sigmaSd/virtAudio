@@ -1,0 +1,79 @@
+import { Button, ComboBox, VerticalBox, LineEdit, HorizontalBox } from "std-widgets.slint";
+
+export global Logic {
+    callback startServer(string);
+    callback stopServer();
+    callback playAudio(string);
+    callback stopAudio();
+    callback getRandomNumber() -> int;
+}
+
+export component MainWindow inherits Window {
+    width: 400px;
+    height: 400px;
+    title: "Virtual Audio Streamer";
+    background: #f0f0f0;
+
+    in-out property <[string]> virtual_mics: [];
+    in-out property <string> selected_mic: "";
+    out property <bool> is-server-running: false;
+    in-out property <bool> is-audio-playing: false;
+    in-out property <bool> is-client-connected: false;
+    in property <string> localIp;
+    property <string> new-mic-name: "";
+
+    VerticalBox {
+        padding: 20px;
+        spacing: 10px;
+
+        Text {
+            text: "Virtual Audio Streamer";
+            font-size: 24px;
+            horizontal-alignment: center;
+        }
+
+        HorizontalBox {
+            Button {
+                text: root.is-server-running ? "Stop Server" : "Start Server";
+                primary: !root.is-server-running;
+                clicked => {
+                    if (!root.is-server-running) {
+                        Logic.startServer(root.selected_mic);
+                        root.is-server-running = true;
+                    } else {
+                        Logic.stopServer();
+                        root.is-server-running = false;
+                        root.is-client-connected = false;
+                        root.is-audio-playing = false;
+                    }
+                }
+            }
+
+            Text {
+                text: root.is-server-running ? "Server Running at " + root.localIp : "";
+                vertical-alignment: center;
+            }
+        }
+
+        if (root.is-server-running && !root.is-client-connected): Text {
+            text: "Waiting for client to connect...";
+            font-size: 16px;
+            horizontal-alignment: center;
+        }
+
+        if (root.is-server-running && root.is-client-connected): HorizontalBox {
+            Button {
+                text: root.is-audio-playing ? "Stop Audio" : "Play Microphone Audio";
+                clicked => {
+                    if (!root.is-audio-playing) {
+                        Logic.playAudio(root.selected_mic);
+                        root.is-audio-playing = true;
+                    } else {
+                        Logic.stopAudio();
+                        root.is-audio-playing = false;
+                    }
+                }
+            }
+        }
+    }
+}
