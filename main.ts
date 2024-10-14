@@ -120,56 +120,7 @@ function startFFmpegProcess() {
   })();
 }
 
-const html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Audio Streaming</title>
-</head>
-<body>
-    <h1>Audio Streaming</h1>
-    <button id="startButton">Start Streaming</button>
-    <script>
-        const startButton = document.getElementById('startButton');
-        let mediaRecorder;
-        let socket;
-        let isStreaming = false;
-        let headerSent = false;
-
-        startButton.addEventListener('click', async () => {
-            if (!isStreaming) {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
-
-                socket = new WebSocket(\`ws://\${window.location.host}/ws\`);
-                socket.onopen = () => {
-                    console.log('WebSocket connected');
-                    mediaRecorder.start(1000);
-                    startButton.textContent = 'Stop Streaming';
-                    isStreaming = true;
-                };
-
-                mediaRecorder.ondataavailable = async (event) => {
-                    if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-                        console.log(\`Sending chunk of size: \${event.data.size} bytes\`);
-                        const arrayBuffer = await event.data.arrayBuffer();
-                        const uint8Array = new Uint8Array(arrayBuffer);
-                        console.log(\`First 32 bytes: \${Array.from(uint8Array.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join(' ')}\`);
-                        await socket.send(event.data);
-                    }
-                };
-            } else {
-                mediaRecorder.stop();
-                socket.close();
-                startButton.textContent = 'Start Streaming';
-                isStreaming = false;
-                headerSent = false;
-            }
-        });
-    </script>
-</body>
-</html>
-`;
+const html = Deno.readTextFileSync("client.html");
 
 Deno.serve({ port: port }, async (request) => {
   if (request.url.endsWith("/ws")) {
