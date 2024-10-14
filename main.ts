@@ -104,7 +104,9 @@ function startFFmpegProcess() {
     for await (const chunk of ffmpegProcess.stdout) {
       console.log(`FFmpeg stdout: Received ${chunk.byteLength} bytes`);
       totalBytesWritten += chunk.byteLength;
-      await pipeWriter.write(chunk);
+      try {
+        await pipeWriter.write(chunk);
+      } catch { /*   */ }
     }
     console.log(`Total bytes written to virtual mic: ${totalBytesWritten}`);
 
@@ -225,7 +227,6 @@ Deno.serve({ port: port }, async (request) => {
     return response;
   } else if (request.url.endsWith("/stop")) {
     // stop the server and exit
-    console.log("called");
     await new Deno.Command("pactl", {
       args: ["unload-module", "module-pipe-source"],
       stderr: "null",
