@@ -84,6 +84,7 @@
                   socket.onclose = () => {
                       console.log('WebSocket disconnected');
                       stopStreaming();
+                      wakeLock?.release();
                   };
 
                   mediaRecorder.ondataavailable = async (event) => {
