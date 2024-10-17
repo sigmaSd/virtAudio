@@ -89,9 +89,6 @@
                   mediaRecorder.ondataavailable = async (event) => {
                       if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
                           console.log(`Sending chunk of size: ${event.data.size} bytes`);
-                          const arrayBuffer = await event.data.arrayBuffer();
-                          const uint8Array = new Uint8Array(arrayBuffer);
-                          console.log(`First 32 bytes: ${Array.from(uint8Array.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
                           await socket.send(event.data);
                       }
                   };
