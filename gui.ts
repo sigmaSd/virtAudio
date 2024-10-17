@@ -1,27 +1,26 @@
-// gui.ts
 import * as slint from "npm:slint-ui@1.8.0";
 
 interface MainWindow {
-  set_virtual_mics: (mics: string[]) => void;
-  set_selected_mic: (mic: string) => void;
-  Logic: {
-    createVirtualMic: (name: string) => void;
+  Global: {
     startServer: () => void;
     stopServer: () => void;
-    playAudio: (mic: string) => void;
+    playAudio: () => void;
     stopAudio: () => void;
-    getRandomNumber: () => number;
   };
+  is_server_running: boolean;
+  is_audio_playing: boolean;
+  is_client_connected: boolean;
+  localIp: string;
+  run(): Promise<void>;
 }
 
 // https://github.com/slint-ui/slint/issues/5780
 Deno.env.set("WAYLAND_DISPLAY", "");
-const guiSlint = await fetch(import.meta.resolve("./gui.slint")).then((r) =>
-  r.text()
-);
+const guiSlint = await fetch(import.meta.resolve("./gui.slint"))
+  .then((r) => r.text());
 // deno-lint-ignore no-explicit-any
 const ui = slint.loadSource(guiSlint, "main.js") as any;
-const window = ui.MainWindow();
+const window = ui.MainWindow() as MainWindow;
 const port = Number.parseInt(Deno.env.get("PORT") || "8000");
 
 let pi: Deno.ChildProcess | null = null;
@@ -74,12 +73,9 @@ async function playAudio() {
   }).spawn();
 
   if (pi.stdout && po.stdin) {
-    const reader = pi.stdout.getReader();
     const writer = po.stdin.getWriter();
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      await writer.write(chunk.value);
+    for await (const chunk of pi.stdout) {
+      await writer.write(chunk);
     }
   }
 }
@@ -93,23 +89,21 @@ function stopAudio() {
   window.is_audio_playing = false;
 }
 
-window.Logic.startServer = () => {
+window.Global.startServer = () => {
   startServer();
 };
 
-window.Logic.stopServer = () => {
+window.Global.stopServer = () => {
   stopServer();
 };
 
-window.Logic.playAudio = () => {
+window.Global.playAudio = () => {
   playAudio();
 };
 
-window.Logic.stopAudio = () => {
+window.Global.stopAudio = () => {
   stopAudio();
 };
-
-window.Logic.getRandomNumber = () => Math.floor(Math.random() * 1000);
 
 window.localIp = `${getLocalIp()}:${port}`;
 

@@ -1,11 +1,10 @@
 import { Button, ComboBox, VerticalBox, LineEdit, HorizontalBox } from "std-widgets.slint";
 
-export global Logic {
+export global Global {
     callback startServer();
     callback stopServer();
-    callback playAudio(string);
+    callback playAudio();
     callback stopAudio();
-    callback getRandomNumber() -> int;
 }
 
 export component MainWindow inherits Window {
@@ -14,13 +13,10 @@ export component MainWindow inherits Window {
     title: "Virtual Audio Streamer";
     background: #f0f0f0;
 
-    in-out property <[string]> virtual_mics: [];
-    in-out property <string> selected_mic: "";
     out property <bool> is-server-running: false;
     in-out property <bool> is-audio-playing: false;
     in-out property <bool> is-client-connected: false;
     in property <string> localIp;
-    property <string> new-mic-name: "";
 
     VerticalBox {
         padding: 20px;
@@ -38,10 +34,10 @@ export component MainWindow inherits Window {
                 primary: !root.is-server-running;
                 clicked => {
                     if (!root.is-server-running) {
-                        Logic.startServer();
+                        Global.startServer();
                         root.is-server-running = true;
                     } else {
-                        Logic.stopServer();
+                        Global.stopServer();
                         root.is-server-running = false;
                         root.is-client-connected = false;
                         root.is-audio-playing = false;
@@ -66,10 +62,10 @@ export component MainWindow inherits Window {
                 text: root.is-audio-playing ? "Stop Audio" : "Play Microphone Audio";
                 clicked => {
                     if (!root.is-audio-playing) {
-                        Logic.playAudio(root.selected_mic);
+                        Global.playAudio();
                         root.is-audio-playing = true;
                     } else {
-                        Logic.stopAudio();
+                        Global.stopAudio();
                         root.is-audio-playing = false;
                     }
                 }
