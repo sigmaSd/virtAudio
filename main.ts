@@ -9,9 +9,7 @@ async function unloadPipeSource() {
 }
 
 Deno.addSignalListener("SIGINT", async () => {
-  console.log(1);
   await unloadPipeSource();
-  console.log(2);
   Deno.exit(0);
 });
 
@@ -96,7 +94,7 @@ class FFmpeg {
         "-ar",
         "48000",
         "-v",
-        "debug",
+        "warning",
         "pipe:1",
       ],
       stdin: "piped",
