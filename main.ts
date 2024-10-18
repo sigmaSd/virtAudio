@@ -16,14 +16,15 @@ Deno.addSignalListener("SIGINT", async () => {
 class VirtualMic {
   #writer?: Deno.FsFile;
   static #idCounter: number = 0;
+  #id: number;
   #micIndex?: number;
 
   constructor() {
-    VirtualMic.#idCounter++;
+    this.#id = ++VirtualMic.#idCounter;
   }
 
   async start() {
-    const virtualMicPipePath = "/tmp/virtual_mic_pipe" + VirtualMic.#idCounter;
+    const virtualMicPipePath = "/tmp/virtual_mic_pipe" + this.#id;
 
     // Create the named pipe if it doesn't exist
     try {
@@ -44,7 +45,7 @@ class VirtualMic {
       args: [
         "load-module",
         "module-pipe-source",
-        `source_name=VirtualMic${VirtualMic.#idCounter}`,
+        `source_name=VirtualMic${this.#id}`,
         `file=${virtualMicPipePath}`,
         "format=s16le",
         "rate=48000",
