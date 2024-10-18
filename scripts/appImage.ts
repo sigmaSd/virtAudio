@@ -28,10 +28,11 @@ if (import.meta.main) {
   await $`cp -r . /tmp/appimage/VirtualMic.AppDir/vmic`;
   // vendor dependencies
   Deno.writeTextFileSync(
-    "/tmp/appimage/VirtualMic.AppDir/vmic/deno.json",
+    "/tmp/appimage/VirtualMic.AppDir/vmic/src/deno.json",
     JSON.stringify({ vendor: true }),
   );
-  await $`${deno} cache gui.ts`.cwd("/tmp/appimage/VirtualMic.AppDir/vmic");
+  await $`${deno} cache gui.ts main.ts`
+    .cwd("/tmp/appimage/VirtualMic.AppDir/vmic/src");
 
   await $`cp ${deno} /tmp/appimage/VirtualMic.AppDir/usr/bin/deno`;
 
