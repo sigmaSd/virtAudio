@@ -1,10 +1,15 @@
-import { Button, ComboBox, VerticalBox, LineEdit, HorizontalBox } from "std-widgets.slint";
+import { Button, ComboBox, VerticalBox, LineEdit, HorizontalBox, ListView } from "std-widgets.slint";
 
 export global Global {
     callback startServer();
     callback stopServer();
-    callback playAudio();
-    callback stopAudio();
+    callback playAudio(string);
+    callback stopAudio(string);
+}
+
+struct Mic {
+    name: string,
+    playing: bool,
 }
 
 export component MainWindow inherits Window {
@@ -17,6 +22,7 @@ export component MainWindow inherits Window {
     in-out property <bool> is-audio-playing: false;
     in-out property <bool> is-client-connected: false;
     in property <string> localIp;
+    in property <[Mic]> mics: [];
 
     VerticalBox {
         padding: 20px;
@@ -51,22 +57,28 @@ export component MainWindow inherits Window {
             }
         }
 
-        if (root.is-server-running && !root.is-client-connected): Text {
+        if (root.is-server-running && root.mics.length == 0): Text {
             text: "Waiting for client to connect...";
             font-size: 16px;
             horizontal-alignment: center;
         }
 
-        if (root.is-server-running && root.is-client-connected): HorizontalBox {
-            Button {
-                text: root.is-audio-playing ? "Stop Audio" : "Play Microphone Audio";
-                clicked => {
-                    if (!root.is-audio-playing) {
-                        Global.playAudio();
-                        root.is-audio-playing = true;
-                    } else {
-                        Global.stopAudio();
-                        root.is-audio-playing = false;
+        ListView {
+            for mic in mics: HorizontalBox {
+                Text {
+                    text: mic.name;
+                }
+
+                Button {
+                    text: mic.playing ? "Stop" : "Play";
+                    clicked => {
+                        if mic.playing {
+                            Global.stopAudio(mic.name);
+                            mic.playing = false;
+                        } else {
+                            Global.playAudio(mic.name);
+                            mic.playing = true;
+                        }
                     }
                 }
             }

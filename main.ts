@@ -40,12 +40,13 @@ class VirtualMic {
       write: true,
     });
 
+    const micName = `VirtualMic${this.#id}`;
     // Load the module-pipe-source
     const result = await new Deno.Command("pactl", {
       args: [
         "load-module",
         "module-pipe-source",
-        `source_name=VirtualMic${this.#id}`,
+        `source_name=${micName}`,
         `file=${virtualMicPipePath}`,
         "format=s16le",
         "rate=48000",
@@ -53,6 +54,7 @@ class VirtualMic {
       ],
     }).output();
     if (result.success) {
+      console.log(`VMAC created: ${micName}`);
       this.#micIndex = Number.parseInt(
         new TextDecoder().decode(result.stdout).trim(),
       );
@@ -67,6 +69,7 @@ class VirtualMic {
   }
 
   async unload() {
+    console.log(`VMAC unloaded: VirtualMic${this.#id}`);
     if (!this.#micIndex) return;
     return await new Deno.Command("pactl", {
       args: ["unload-module", this.#micIndex.toString()],
