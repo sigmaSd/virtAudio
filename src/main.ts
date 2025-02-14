@@ -1,4 +1,3 @@
-import assert from "node:assert";
 import { Err, Ok } from "jsr:@sigmasd/rust-types@0.6.1/result";
 
 async function unloadPipeSource() {
@@ -81,6 +80,7 @@ class FFmpeg {
   #process: Deno.ChildProcess;
   readonly readable: ReadableStream<Uint8Array>;
   #writer: WritableStreamDefaultWriter<Uint8Array>;
+
   constructor() {
     console.log("Starting FFmpeg process");
     const process = new Deno.Command("ffmpeg", {
@@ -120,38 +120,23 @@ class FFmpeg {
   }
 
   async write(data: Uint8Array) {
-    return await this.#writer?.write(data);
+    try {
+      return await this.#writer?.write(data);
+    } catch (error) {
+      console.error("FFmpeg write error:", error);
+      await this.close();
+      throw error;
+    }
   }
 
   async close() {
-    await this.#writer.close();
     try {
+      await this.#writer.close();
       this.#process?.kill("SIGTERM");
-    } catch {
-      /*   */
+    } catch (error) {
+      console.error("Error closing FFmpeg:", error);
     }
   }
-}
-
-function concatUint8Arrays(a: Uint8Array, b: Uint8Array): Uint8Array {
-  const c = new Uint8Array(a.length + b.length);
-  c.set(a, 0);
-  c.set(b, a.length);
-  return c;
-}
-
-function findWebMHeader(data: Uint8Array): number {
-  const WEBM_HEADER_ID = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]);
-  for (let i = 0; i < data.length - WEBM_HEADER_ID.length; i++) {
-    if (
-      data.slice(i, i + WEBM_HEADER_ID.length).every((v, j) =>
-        v === WEBM_HEADER_ID[j]
-      )
-    ) {
-      return i;
-    }
-  }
-  return -1;
 }
 
 if (import.meta.main) {
@@ -166,58 +151,64 @@ if (import.meta.main) {
         const { socket, response } = Deno.upgradeWebSocket(request);
         console.log("WebSocket connection opened");
 
-        let buffer = new Uint8Array(0);
-        let ffmpeg: FFmpeg | null = null;
+        let ffmpeg: FFmpeg | null = new FFmpeg();
         const virtualMic = new VirtualMic();
-        {
+
+        try {
           const result = await virtualMic.start();
           if (result.isErr()) {
             return new Response(`Failed to start virtual mic: ${result}`, {
               status: 500,
             });
           }
-        }
 
-        socket.onmessage = async (event) => {
-          if (event.data instanceof ArrayBuffer) {
-            const chunk = new Uint8Array(event.data);
-            buffer = concatUint8Arrays(buffer, chunk);
-
-            if (!ffmpeg) {
-              // wait for WebM Header then start ffmpeg
-              const headerIndex = findWebMHeader(buffer);
-              if (headerIndex !== -1) {
-                console.log(`WebM header found at index ${headerIndex}`);
-                console.log("Starting FFmpeg process");
-                ffmpeg = new FFmpeg();
-                // pipe ffmpeg to the virtual mic
-                (async () => {
-                  assert(ffmpeg);
-                  for await (const chunk of ffmpeg.readable) {
-                    await virtualMic.write(chunk);
-                  }
-                })();
+          // Pipe ffmpeg to virtual mic
+          const readable = ffmpeg.readable.getReader();
+          (async () => {
+            try {
+              if (!ffmpeg) return;
+              // for await (const chunk of ffmpeg.readable) {
+              while (true) {
+                const chunk = await readable.read();
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                console.log("FFmpeg chunk received", Date.now());
+                await virtualMic.write(chunk.value!);
+                console.log("Virtual mic chunk received", Date.now());
               }
-            } else {
-              // pipe audio data to ffmpeg
-              await ffmpeg.write(buffer);
-              buffer = new Uint8Array(0);
+            } catch (error) {
+              console.error("Error in audio pipeline:", error);
             }
-          }
-        };
+          })();
 
-        socket.onclose = async () => {
-          console.log("WebSocket connection closed");
-          if (buffer.length > 0 && ffmpeg) {
-            await ffmpeg.write(buffer);
-          }
-          await ffmpeg?.close();
-          await virtualMic.unload();
-        };
+          socket.onmessage = async (event) => {
+            if (event.data instanceof ArrayBuffer && ffmpeg) {
+              try {
+                const chunk = new Uint8Array(event.data);
+                const now = Date.now();
+                console.log("Before write", now);
+                await ffmpeg.write(chunk);
+                console.log("after write", Date.now());
+              } catch (error) {
+                console.error("Error processing audio chunk:", error);
+                socket.close();
+              }
+            }
+          };
 
-        socket.onerror = (error) => {
-          console.error("WebSocket error:", error);
-        };
+          socket.onclose = async () => {
+            console.log("WebSocket connection closed");
+            await ffmpeg?.close();
+            await virtualMic.unload();
+            ffmpeg = null;
+          };
+
+          socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+          };
+        } catch (error) {
+          console.error("Setup error:", error);
+          socket.close();
+        }
 
         return response;
       } else if (request.url.endsWith("/stop")) {
