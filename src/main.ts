@@ -99,20 +99,12 @@ class FFmpeg {
       ],
       stdin: "piped",
       stdout: "piped",
-      stderr: "piped",
+      stderr: "null",
     }).spawn();
 
     this.#process = process;
     this.readable = this.#process.stdout;
     this.#writer = this.#process.stdin.getWriter();
-
-    // Handle FFmpeg stderr
-    // (async () => {
-    //   const decoder = new TextDecoder();
-    //   for await (const chunk of process.stderr) {
-    //     console.error("FFmpeg stderr:", decoder.decode(chunk));
-    //   }
-    // })();
   }
 
   async write(data: Uint8Array) {
@@ -136,11 +128,11 @@ class FFmpeg {
 }
 
 if (import.meta.main) {
-  const port = Number.parseInt(Deno.env.get("PORT") || "8000");
   Deno.serve(
     {
-      port: port,
-      onListen: () => console.log(`Listening on http://localhost:${port}/`),
+      port: 0,
+      onListen: ({ port }) =>
+        console.log(`Listening on http://localhost:${port}/`),
     },
     async (request) => {
       if (request.url.endsWith("/ws")) {
@@ -163,9 +155,7 @@ if (import.meta.main) {
             try {
               if (!ffmpeg) return;
               for await (const chunk of ffmpeg.readable) {
-                console.log("FFmpeg chunk received", Date.now());
                 await virtualMic.write(chunk);
-                console.log("Virtual mic chunk received", Date.now());
               }
             } catch (error) {
               console.error("Error in audio pipeline:", error);
@@ -176,10 +166,7 @@ if (import.meta.main) {
             if (event.data instanceof ArrayBuffer && ffmpeg) {
               try {
                 const chunk = new Uint8Array(event.data);
-                const now = Date.now();
-                console.log("Before write", now);
                 await ffmpeg.write(chunk);
-                console.log("after write", Date.now());
               } catch (error) {
                 console.error("Error processing audio chunk:", error);
                 socket.close();
