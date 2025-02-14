@@ -29,11 +29,9 @@ class VirtualMic {
     try {
       await Deno.stat(virtualMicPipePath);
     } catch {
-      new Deno.Command("mkfifo", { args: [virtualMicPipePath] })
-        .spawn();
+      await new Deno.Command("mkfifo", { args: [virtualMicPipePath] })
+        .spawn().status;
     }
-    // wait a bit for mkfifo
-    await new Promise((r) => setTimeout(r, 100));
     this.#writer = await Deno.open(virtualMicPipePath, {
       read: true,
       write: true,
@@ -97,8 +95,6 @@ class FFmpeg {
         "2",
         "-ar",
         "48000",
-        "-v",
-        "warning",
         "pipe:1",
       ],
       stdin: "piped",
@@ -111,12 +107,12 @@ class FFmpeg {
     this.#writer = this.#process.stdin.getWriter();
 
     // Handle FFmpeg stderr
-    (async () => {
-      const decoder = new TextDecoder();
-      for await (const chunk of process.stderr) {
-        console.error("FFmpeg stderr:", decoder.decode(chunk));
-      }
-    })();
+    // (async () => {
+    //   const decoder = new TextDecoder();
+    //   for await (const chunk of process.stderr) {
+    //     console.error("FFmpeg stderr:", decoder.decode(chunk));
+    //   }
+    // })();
   }
 
   async write(data: Uint8Array) {
@@ -163,16 +159,12 @@ if (import.meta.main) {
           }
 
           // Pipe ffmpeg to virtual mic
-          const readable = ffmpeg.readable.getReader();
           (async () => {
             try {
               if (!ffmpeg) return;
-              // for await (const chunk of ffmpeg.readable) {
-              while (true) {
-                const chunk = await readable.read();
-                await new Promise((resolve) => setTimeout(resolve, 100));
+              for await (const chunk of ffmpeg.readable) {
                 console.log("FFmpeg chunk received", Date.now());
-                await virtualMic.write(chunk.value!);
+                await virtualMic.write(chunk);
                 console.log("Virtual mic chunk received", Date.now());
               }
             } catch (error) {
