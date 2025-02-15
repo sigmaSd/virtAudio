@@ -1,0 +1,91 @@
+{
+  "manifest": {
+    "/lib/rs_lib.generated.d.ts": {
+      "size": 2092,
+      "checksum": "sha256-972d42c57b67df0365036d79472ac6295a288627aa23845a62666ccea4b18241"
+    },
+    "/.github/workflows/publish-jsr.yml": {
+      "size": 267,
+      "checksum": "sha256-dbedb4bc0736138a0daed7f029e0fb758c5ac22bb8be0c8f0518c5fd46243104"
+    },
+    "/mod.ts": {
+      "size": 874,
+      "checksum": "sha256-03b064d1432ea30fbe411dc62a25e51f94e5529701682b1b01766bbabbe3a403"
+    },
+    "/rs_lib/src/lib.rs": {
+      "size": 816,
+      "checksum": "sha256-397ae9bde3e098a21119a4ccd130756030c365d4ebef0904d95ea03348d2fb38"
+    },
+    "/README.md": {
+      "size": 296,
+      "checksum": "sha256-4a50f863ab8361c4687e757f4540487f20e56665cf3a651362f7e2fc4aaef7e3"
+    },
+    "/deno.json": {
+      "size": 151,
+      "checksum": "sha256-e59c43e6a75d94c55eb7cb89d150552f85523cc46065239a9312400d289c88c8"
+    },
+    "/lib/rs_lib.generated.js": {
+      "size": 205551,
+      "checksum": "sha256-928f44dd11f2296035c31688ac57ed8f00c52c52bcdb80e6f9732fecd95f99c9"
+    },
+    "/lib/rs_lib_bg.wasm": {
+      "size": 59649,
+      "checksum": "sha256-438bff9fc09d393caa821268ef62cc848fa6e07b09b12fadbe12a80c06ce4201"
+    },
+    "/Cargo.toml": {
+      "size": 136,
+      "checksum": "sha256-f609e7cee0b6b4789fb551bfbbfc21df9a6b94fdd1986e993bf90cadee8fd515"
+    },
+    "/Cargo.lock": {
+      "size": 6290,
+      "checksum": "sha256-744456d6f7d0ff7e7a334c903f368cbe8dceee0f8722cc2860bd7e038d1dcb3f"
+    },
+    "/rs_lib/Cargo.toml": {
+      "size": 228,
+      "checksum": "sha256-98374faad52b9e6852f1fcdee922486cc7789092bcdf1a707f1fdb0fb302ca13"
+    }
+  },
+  "moduleGraph2": {
+    "/lib/rs_lib.generated.js": {
+      "tsReferences": [
+        {
+          "type": "types",
+          "text": "./rs_lib.generated.d.ts",
+          "range": [
+            [
+              4,
+              21
+            ],
+            [
+              4,
+              46
+            ]
+          ]
+        }
+      ]
+    },
+    "/mod.ts": {
+      "dependencies": [
+        {
+          "type": "static",
+          "kind": "import",
+          "specifier": "./lib/rs_lib.generated.js",
+          "specifierRange": [
+            [
+              14,
+              28
+            ],
+            [
+              14,
+              55
+            ]
+          ]
+        }
+      ]
+    },
+    "/lib/rs_lib.generated.d.ts": {}
+  },
+  "exports": {
+    ".": "./mod.ts"
+  }
+}

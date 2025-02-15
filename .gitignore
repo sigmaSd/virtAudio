@@ -1,1 +1,3 @@
-node_modules
+distro/.flatpak-builder
+distro/build-dir
+src/node_modules

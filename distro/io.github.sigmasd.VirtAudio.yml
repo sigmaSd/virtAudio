@@ -1,0 +1,111 @@
+app-id: io.github.sigmasd.VirtAudio
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: virtaudio
+finish-args:
+  # Display
+  - --socket=wayland
+  - --socket=x11
+  - --share=ipc
+  # Audio access
+  - --socket=pulseaudio
+  # Network access for local server and WebSocket connections
+  - --share=network
+  # Needed for libinput
+  - --device=input
+  # Needed for mesa
+  - --device=dri
+  # Allow creating temporary files (for creating virtual mics)
+  - --filesystem=/tmp:create
+modules:
+  # needed for libinput
+  - name: libevdev
+    buildsystem: meson
+    config-opts:
+      - -Dtests=disabled
+      - -Ddocumentation=disabled
+    sources:
+      - type: archive
+        url: https://www.freedesktop.org/software/libevdev/libevdev-1.13.3.tar.xz
+        sha256: abf1aace86208eebdd5d3550ffded4c8d73bb405b796d51c389c9d0604cbcfbf
+        x-checker-data:
+          type: anitya
+          project-id: 20540
+          stable-only: true
+          url-template: https://www.freedesktop.org/software/libevdev/libevdev-$version.tar.xz
+    cleanup:
+      - /bin
+      - /include
+      - /lib/pkgconfig
+      - /share/man
+  # needed for libinput
+  - name: mtdev
+    buildsystem: autotools
+    config-opts:
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://bitmath.org/code/mtdev/mtdev-1.1.7.tar.bz2
+        sha256: a107adad2101fecac54ac7f9f0e0a0dd155d954193da55c2340c97f2ff1d814e
+        x-checker-data:
+          type: anitya
+          project-id: 8868
+          stable-only: true
+          url-template: https://bitmath.org/code/mtdev/mtdev-$version.tar.bz2
+      # Upstream uses an outdated version of the config.guess/config.sub script,
+      # so we override it here to fix aarch64 builds.
+      - type: shell
+        commands:
+          - cp -p /usr/share/automake-*/config.{sub,guess} config-aux/
+    cleanup:
+      - /bin
+      - /include
+      - /lib/*.la
+      - /lib/pkgconfig
+  # needed for slint
+  - name: libinput
+    buildsystem: meson
+    config-opts:
+      - --libexec=lib
+      - -Dlibwacom=false
+      - -Ddebug-gui=false
+      - -Dtests=false
+      - -Ddocumentation=false
+      - -Dzshcompletiondir=no
+    sources:
+      - type: archive
+        url: https://gitlab.freedesktop.org/libinput/libinput/-/archive/1.27.0/libinput-1.27.0.tar.gz
+        sha256: b11b900bf88ef68fe688c107226bb453ef26faf461ae2dcf9690b00009d660a6
+        x-checker-data:
+          type: anitya
+          project-id: 5781
+          stable-only: true
+          url-template: https://gitlab.freedesktop.org/libinput/libinput/-/archive/$version/libinput-$version.tar.gz
+    cleanup:
+      - /bin
+      - /etc
+      - /lib/libinput
+      - /lib/udev
+      - /share
+      - /include
+      - /lib/pkgconfig
+  - name: virtaudio
+    buildsystem: simple
+    build-commands:
+      # Create directory for the application
+      - mkdir -p /app/virtaudio
+      # Copy source files
+      - cp -r src/* /app/virtaudio/
+      # Create wrapper script
+      - install -D virtaudio.sh /app/bin/virtaudio
+      - install -D ./deno /app/bin/deno
+    sources:
+      - type: dir
+        path: ..
+      - type: script
+        dest-filename: virtaudio.sh
+        commands:
+          - exec deno run --allow-all /app/virtaudio/gui.ts
+      - type: file
+        path: /home/mrcool/.deno/bin/deno
