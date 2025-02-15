@@ -1,3 +1,5 @@
+import assert from "node:assert";
+
 export async function unloadPipeSource() {
   await new Deno.Command("pactl", {
     args: ["unload-module", "module-pipe-source"],
@@ -11,7 +13,7 @@ Deno.addSignalListener("SIGINT", async () => {
 });
 
 class VirtualMic {
-  #writer?: Deno.FsFile;
+  writeable?: WritableStream<Uint8Array>;
   static #idCounter: number = 0;
   #id: number;
   #micIndex?: number;
@@ -31,10 +33,10 @@ class VirtualMic {
       await new Deno.Command("mkfifo", { args: [virtualMicPipePath] })
         .spawn().status;
     }
-    this.#writer = await Deno.open(virtualMicPipePath, {
+    this.writeable = await Deno.open(virtualMicPipePath, {
       read: true,
       write: true,
-    });
+    }).then((process) => process.writable);
 
     const micName = `VirtualMic${this.#id}`;
     this.name = micName;
@@ -59,10 +61,6 @@ class VirtualMic {
     } else {
       throw new Error("Failed to load module-pipe-source");
     }
-  }
-
-  async write(data: Uint8Array) {
-    return await this.#writer?.write(data);
   }
 
   async unload() {
@@ -153,57 +151,39 @@ export function main(
           let ffmpeg: FFmpeg | null = new FFmpeg();
           const virtualMic = new VirtualMic();
 
-          try {
-            await virtualMic.start();
+          await virtualMic.start();
+          events.dispatchEvent(
+            new CustomEvent("micAdded", {
+              detail: virtualMic.name ?? "unknown",
+            }),
+          );
+
+          assert(ffmpeg);
+          assert(virtualMic.writeable);
+          ffmpeg.readable.pipeTo(virtualMic.writeable);
+
+          socket.onmessage = async (event) => {
+            if (event.data instanceof ArrayBuffer && ffmpeg) {
+              const chunk = new Uint8Array(event.data);
+              await ffmpeg.write(chunk);
+            }
+          };
+
+          socket.onclose = async () => {
+            console.log("WebSocket connection closed");
+            await ffmpeg?.close();
+            await virtualMic.unload();
             events.dispatchEvent(
-              new CustomEvent("micAdded", {
+              new CustomEvent("micRemoved", {
                 detail: virtualMic.name ?? "unknown",
               }),
             );
+            ffmpeg = null;
+          };
 
-            // Pipe ffmpeg to virtual mic
-            (async () => {
-              try {
-                if (!ffmpeg) return;
-                for await (const chunk of ffmpeg.readable) {
-                  await virtualMic.write(chunk);
-                }
-              } catch (error) {
-                console.error("Error in audio pipeline:", error);
-              }
-            })();
-
-            socket.onmessage = async (event) => {
-              if (event.data instanceof ArrayBuffer && ffmpeg) {
-                try {
-                  const chunk = new Uint8Array(event.data);
-                  await ffmpeg.write(chunk);
-                } catch (error) {
-                  console.error("Error processing audio chunk:", error);
-                  socket.close();
-                }
-              }
-            };
-
-            socket.onclose = async () => {
-              console.log("WebSocket connection closed");
-              await ffmpeg?.close();
-              await virtualMic.unload();
-              events.dispatchEvent(
-                new CustomEvent("micRemoved", {
-                  detail: virtualMic.name ?? "unknown",
-                }),
-              );
-              ffmpeg = null;
-            };
-
-            socket.onerror = (error) => {
-              console.error("WebSocket error:", error);
-            };
-          } catch (error) {
-            console.error("Setup error:", error);
-            socket.close();
-          }
+          socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+          };
 
           return response;
         } else {
