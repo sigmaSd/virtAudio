@@ -1,5 +1,4 @@
 import * as slint from "npm:slint-ui@1.8.0";
-import { $, CommandChild } from "jsr:@david/dax@0.42.0";
 import { qrPng } from "jsr:@sigmasd/qrpng@0.1.3";
 import { decode } from "npm:@jsquash/png@3.0.1";
 import { main as startServer, unloadPipeSource } from "./main.ts";
@@ -26,11 +25,22 @@ function getLocalIp(): string {
 }
 
 class Player {
-  #mics = new Map<string, CommandChild>();
+  #mics = new Map<string, Deno.ChildProcess>();
   constructor() {
   }
   play(mic: string) {
-    const process = $`pacat --record -d ${mic} | pacat --playback`.spawn();
+    const process = new Deno.Command("pacat", {
+      args: ["--record", "-d", mic],
+      stdout: "piped",
+    }).spawn();
+
+    const playbackProcess = new Deno.Command("pacat", {
+      args: ["--playback"],
+      stdin: "piped",
+    }).spawn();
+
+    // Pipe the output of record to input of playback
+    process.stdout.pipeTo(playbackProcess.stdin);
     this.#mics.set(mic, process);
   }
   stop(mic: string) {
