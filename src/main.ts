@@ -1,5 +1,3 @@
-import { Err, Ok } from "jsr:@sigmasd/rust-types@0.6.1/result";
-
 export async function unloadPipeSource() {
   await new Deno.Command("pactl", {
     args: ["unload-module", "module-pipe-source"],
@@ -57,9 +55,9 @@ class VirtualMic {
       this.#micIndex = Number.parseInt(
         new TextDecoder().decode(result.stdout).trim(),
       );
-      return Ok(micName);
+      return micName;
     } else {
-      return Err("Failed to load module-pipe-source");
+      throw new Error("Failed to load module-pipe-source");
     }
   }
 
@@ -160,17 +158,12 @@ export function main(
           const virtualMic = new VirtualMic();
 
           try {
-            const result = await virtualMic.start();
+            await virtualMic.start();
             events.dispatchEvent(
               new CustomEvent("micAdded", {
                 detail: virtualMic.name ?? "unknown",
               }),
             );
-            if (result.isErr()) {
-              return new Response(`Failed to start virtual mic: ${result}`, {
-                status: 500,
-              });
-            }
 
             // Pipe ffmpeg to virtual mic
             (async () => {
