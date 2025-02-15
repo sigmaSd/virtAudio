@@ -74,7 +74,7 @@
                   socket = new WebSocket(`ws://${window.location.host}/ws`);
                   socket.onopen = () => {
                       console.log('WebSocket connected');
-                      mediaRecorder.start(1000);
+                      mediaRecorder.start(20);
                       startButton.textContent = 'Stop Streaming';
                       startButton.style.backgroundColor = '#f44336';
                       isStreaming = true;
