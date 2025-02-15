@@ -127,10 +127,6 @@ class FFmpeg {
   }
 }
 
-if (import.meta.main) {
-  await main();
-}
-
 export class Events extends EventTarget {}
 
 export function main(
@@ -222,4 +218,8 @@ export function main(
       },
     );
   });
+}
+
+if (import.meta.main) {
+  await main();
 }
