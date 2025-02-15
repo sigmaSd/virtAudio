@@ -1,5 +1,8 @@
 import * as slint from "npm:slint-ui@1.8.0";
 import { $, CommandChild } from "jsr:@david/dax@0.42.0";
+import { qrPng } from "jsr:@sigmasd/qrpng@0.1.3";
+import { decode } from "npm:@jsquash/png@3.0.1";
+import { main as startServer, unloadPipeSource } from "./main.ts";
 
 interface Mic {
   name: string;
@@ -7,56 +10,19 @@ interface Mic {
 }
 interface MainWindow {
   Global: {
-    startServer: () => void;
-    stopServer: () => void;
     playAudio: (mic: string) => void;
     stopAudio: (mic: string) => void;
   };
   localIp: string;
+  qrCode: slint.ImageData;
   mics: Mic[];
   run(): Promise<void>;
 }
 
-class Server extends EventTarget {
-  #process: Deno.ChildProcess;
-  static port = Number.parseInt(Deno.env.get("PORT") || "8000");
-  constructor() {
-    super();
-    const process = new Deno.Command(Deno.execPath(), {
-      args: ["run", "--allow-all", import.meta.resolve("./main.ts")],
-      stdout: "piped",
-    }).spawn();
-    this.#process = process;
-
-    // Monitor server output for client connections
-    const decoder = new TextDecoder();
-    (async () => {
-      if (process && process.stdout) {
-        for await (const chunk of process.stdout) {
-          const output = decoder.decode(chunk);
-          if (output.includes("VMAC")) {
-            const mic = output.split(":")[1].trim();
-            if (output.includes("created")) {
-              this.dispatchEvent(
-                new CustomEvent("micAdded", { detail: mic }),
-              );
-            } else if (output.includes("unloaded")) {
-              this.dispatchEvent(
-                new CustomEvent("micRemoved", { detail: mic }),
-              );
-            }
-          }
-        }
-      }
-    })();
-  }
-  async stop() {
-    await fetch(`http://localhost:${Server.port}/stop`).then(() => {
-      console.log("Server stopped");
-    }).catch((err) => {
-      console.error("Failed to stop server:", err);
-    });
-  }
+function getLocalIp(): string {
+  return Deno.networkInterfaces()
+    .find((int) => int.name !== "lo" && int.family === "IPv4")
+    ?.address ?? "localhost";
 }
 
 class Player {
@@ -79,42 +45,20 @@ class Player {
   }
 }
 
-function getLocalIp(): string {
-  return Deno.networkInterfaces().find((int) =>
-    int.name !== "lo" && int.family === "IPv4"
-  )?.address ?? "localhost";
-}
-
 if (import.meta.main) {
   // https://github.com/slint-ui/slint/issues/5780
   Deno.env.set("WAYLAND_DISPLAY", "");
+  // Setup UI
   const guiSlint = await fetch(import.meta.resolve("./gui.slint"))
     .then((r) => r.text());
   // deno-lint-ignore no-explicit-any
   const ui = slint.loadSource(guiSlint, "main.js") as any;
   const window = ui.MainWindow() as MainWindow;
 
-  let server: Server | null = null;
+  // Create an audio player
   const player = new Player();
 
-  window.Global.startServer = () => {
-    server = new Server();
-    server.addEventListener("micAdded", (event: Event) => {
-      const mic = (event as CustomEvent<string>).detail;
-      window.mics = [...window.mics, { name: mic, playing: false }];
-    });
-    server.addEventListener("micRemoved", (event: Event) => {
-      const mic = (event as CustomEvent<string>).detail;
-      window.Global.stopAudio(mic);
-      window.mics = [...window.mics].filter((m) => m.name !== mic);
-    });
-  };
-
-  window.Global.stopServer = async () => {
-    await server?.stop();
-    server = null;
-  };
-
+  // Hook player functions
   window.Global.playAudio = (mic: string) => {
     player.play(mic);
   };
@@ -123,9 +67,41 @@ if (import.meta.main) {
     player.stop(mic);
   };
 
-  window.localIp = `${getLocalIp()}:${Server.port}`;
+  // Start server
+  const abortController = new AbortController();
+  const { port: serverPort, events: serverEvents } = await startServer({
+    abortController,
+  });
+  window.localIp = `${getLocalIp()}:${serverPort}`;
 
+  // Generate QR code
+  const address = `http://${getLocalIp()}:${serverPort}`;
+  const qrCodePng = qrPng(new TextEncoder().encode(address));
+  const rgba = await decode(qrCodePng);
+  window.qrCode = {
+    width: rgba.width,
+    height: rgba.height,
+    data: new Uint8Array(rgba.data),
+  };
+
+  // Hook server events (mic additions and deletions)
+  serverEvents.addEventListener("micAdded", (event: Event) => {
+    const mic = (event as CustomEvent<string>).detail;
+    window.mics = [...window.mics, { name: mic, playing: false }];
+  });
+  serverEvents.addEventListener("micRemoved", (event: Event) => {
+    const mic = (event as CustomEvent<string>).detail;
+    window.Global.stopAudio(mic);
+    window.mics = [...window.mics].filter((m) => m.name !== mic);
+  });
+
+  // Start the GUI
   await window.run();
-  (server as Server | null)?.stop();
+
+  // Cleanup at exit
+  abortController?.abort();
   player.stopAll();
+  await unloadPipeSource();
+  // There could be still some ffmpeg instances running, this is the easiest way to ensure they are stopped
+  Deno.exit(0);
 }

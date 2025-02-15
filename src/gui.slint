@@ -1,8 +1,6 @@
 import { Button, ComboBox, VerticalBox, LineEdit, HorizontalBox, ListView } from "std-widgets.slint";
 
 export global Global {
-    callback startServer();
-    callback stopServer();
     callback playAudio(string);
     callback stopAudio(string);
 }
@@ -13,74 +11,142 @@ struct Mic {
 }
 
 export component MainWindow inherits Window {
-    width: 400px;
-    height: 400px;
+    width: 800px;
+    height: 600px;
     title: "Virtual Audio Streamer";
-    background: #f0f0f0;
+    background: #ffffff;
 
-    out property <bool> is-server-running: false;
-    in-out property <bool> is-audio-playing: false;
-    in-out property <bool> is-client-connected: false;
     in property <string> localIp;
+    in property <image> qrCode;
     in property <[Mic]> mics: [];
 
-    VerticalBox {
-        padding: 20px;
-        spacing: 10px;
+    HorizontalBox {
+        padding: 40px;
+        spacing: 40px;
 
-        Text {
-            text: "Virtual Audio Streamer";
-            font-size: 24px;
-            horizontal-alignment: center;
-        }
-
-        HorizontalBox {
-            Button {
-                text: root.is-server-running ? "Stop Server" : "Start Server";
-                primary: !root.is-server-running;
-                clicked => {
-                    if (!root.is-server-running) {
-                        Global.startServer();
-                        root.is-server-running = true;
-                    } else {
-                        Global.stopServer();
-                        root.is-server-running = false;
-                        root.is-client-connected = false;
-                        root.is-audio-playing = false;
-                    }
-                }
-            }
+        VerticalBox {
+            width: 50%;
+            spacing: 24px;
+            alignment: start;
 
             Text {
-                text: root.is-server-running ? "Server Running at " + root.localIp : "";
-                vertical-alignment: center;
+                text: "Virtual Audio";
+                font-size: 32px;
+                font-weight: 700;
             }
-        }
 
-        if (root.is-server-running && root.mics.length == 0): Text {
-            text: "Waiting for client to connect...";
-            font-size: 16px;
-            horizontal-alignment: center;
-        }
+            VerticalBox {
+                spacing: 8px;
 
-        ListView {
-            for mic in mics: HorizontalBox {
                 Text {
-                    text: mic.name;
+                    text: "Server Address";
+                    color: #71717A;
                 }
 
-                Button {
-                    text: mic.playing ? "Stop" : "Play";
-                    clicked => {
-                        if mic.playing {
-                            Global.stopAudio(mic.name);
-                            mic.playing = false;
-                        } else {
-                            Global.playAudio(mic.name);
-                            mic.playing = true;
+                Rectangle {
+                    height: 48px;
+                    border-radius: 8px;
+                    background: #F4F4F5;
+                    HorizontalBox {
+                        padding: 12px;
+                        Text {
+                            text: root.localIp;
+                            color: #18181B;
+                            font-size: 16px;
                         }
                     }
                 }
+            }
+
+            if (root.mics.length > 0): VerticalBox {
+                spacing: 8px;
+
+                Text {
+                    text: "Available Microphones";
+                    color: #71717A;
+                }
+
+                for mic in mics: Rectangle {
+                    height: 48px;
+                    border-radius: 8px;
+                    background: #F4F4F5;
+
+                    HorizontalBox {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        spacing: 12px;
+
+                        Text {
+                            text: mic.name;
+                            vertical-alignment: center;
+                            color: #18181B;
+                        }
+
+                        TouchArea {
+                            clicked => {
+                                if (mic.playing) {
+                                    Global.stopAudio(mic.name);
+                                    mic.playing = false;
+                                } else {
+                                    Global.playAudio(mic.name);
+                                    mic.playing = true;
+                                }
+                            }
+
+                            Rectangle {
+                                width: 80px;
+                                height: 32px;
+                                border-radius: 6px;
+                                background: mic.playing ? #DC2626 : #22C55E;
+
+                                Text {
+                                    text: mic.playing ? "Stop" : "Play";
+                                    color: white;
+                                    font-weight: 600;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (root.mics.length == 0): Rectangle {
+                height: 120px;
+                border-radius: 8px;
+                background: #F4F4F5;
+
+                VerticalBox {
+                    alignment: center;
+                    Text {
+                        text: "Waiting for connection...";
+                        color: #71717A;
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+        }
+
+        VerticalBox {
+            width: 50%;
+            spacing: 24px;
+            alignment: start;
+
+            Text {
+                text: "Connect Device";
+                font-size: 20px;
+                font-weight: 600;
+            }
+
+            Image {
+                source: root.qrCode;
+                width: 280px;
+                height: 280px;
+            }
+
+            Text {
+                text: "Scan QR code to connect\nyour device";
+                color: #71717A;
+                horizontal-alignment: center;
             }
         }
     }

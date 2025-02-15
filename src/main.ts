@@ -1,6 +1,6 @@
 import { Err, Ok } from "jsr:@sigmasd/rust-types@0.6.1/result";
 
-async function unloadPipeSource() {
+export async function unloadPipeSource() {
   await new Deno.Command("pactl", {
     args: ["unload-module", "module-pipe-source"],
     stderr: "null",
@@ -17,6 +17,7 @@ class VirtualMic {
   static #idCounter: number = 0;
   #id: number;
   #micIndex?: number;
+  name?: string;
 
   constructor() {
     this.#id = ++VirtualMic.#idCounter;
@@ -38,6 +39,7 @@ class VirtualMic {
     });
 
     const micName = `VirtualMic${this.#id}`;
+    this.name = micName;
     // Load the module-pipe-source
     const result = await new Deno.Command("pactl", {
       args: [
@@ -55,7 +57,7 @@ class VirtualMic {
       this.#micIndex = Number.parseInt(
         new TextDecoder().decode(result.stdout).trim(),
       );
-      return Ok(0);
+      return Ok(micName);
     } else {
       return Err("Failed to load module-pipe-source");
     }
@@ -128,82 +130,103 @@ class FFmpeg {
 }
 
 if (import.meta.main) {
-  Deno.serve(
-    {
-      port: 0,
-      onListen: ({ port }) =>
-        console.log(`Listening on http://localhost:${port}/`),
-    },
-    async (request) => {
-      if (request.url.endsWith("/ws")) {
-        const { socket, response } = Deno.upgradeWebSocket(request);
-        console.log("WebSocket connection opened");
+  await main();
+}
 
-        let ffmpeg: FFmpeg | null = new FFmpeg();
-        const virtualMic = new VirtualMic();
+export class Events extends EventTarget {}
 
-        try {
-          const result = await virtualMic.start();
-          if (result.isErr()) {
-            return new Response(`Failed to start virtual mic: ${result}`, {
-              status: 500,
-            });
+export function main(
+  { abortController }: { abortController?: AbortController } = {},
+): Promise<{ port: number; events: Events }> {
+  const events = new Events();
+  return new Promise((resolve) => {
+    Deno.serve(
+      {
+        // port: 0,
+        // Hardcode the port so the clients have an easier time whitelisting the http connection
+        port: 8383,
+        onListen: ({ port }) => {
+          console.log(`Listening on http://localhost:${port}/`);
+          resolve({ port, events });
+        },
+        signal: abortController?.signal,
+      },
+      async (request) => {
+        if (request.url.endsWith("/ws")) {
+          const { socket, response } = Deno.upgradeWebSocket(request);
+          console.log("WebSocket connection opened");
+
+          let ffmpeg: FFmpeg | null = new FFmpeg();
+          const virtualMic = new VirtualMic();
+
+          try {
+            const result = await virtualMic.start();
+            events.dispatchEvent(
+              new CustomEvent("micAdded", {
+                detail: virtualMic.name ?? "unknown",
+              }),
+            );
+            if (result.isErr()) {
+              return new Response(`Failed to start virtual mic: ${result}`, {
+                status: 500,
+              });
+            }
+
+            // Pipe ffmpeg to virtual mic
+            (async () => {
+              try {
+                if (!ffmpeg) return;
+                for await (const chunk of ffmpeg.readable) {
+                  await virtualMic.write(chunk);
+                }
+              } catch (error) {
+                console.error("Error in audio pipeline:", error);
+              }
+            })();
+
+            socket.onmessage = async (event) => {
+              if (event.data instanceof ArrayBuffer && ffmpeg) {
+                try {
+                  const chunk = new Uint8Array(event.data);
+                  await ffmpeg.write(chunk);
+                } catch (error) {
+                  console.error("Error processing audio chunk:", error);
+                  socket.close();
+                }
+              }
+            };
+
+            socket.onclose = async () => {
+              console.log("WebSocket connection closed");
+              await ffmpeg?.close();
+              await virtualMic.unload();
+              events.dispatchEvent(
+                new CustomEvent("micRemoved", {
+                  detail: virtualMic.name ?? "unknown",
+                }),
+              );
+              ffmpeg = null;
+            };
+
+            socket.onerror = (error) => {
+              console.error("WebSocket error:", error);
+            };
+          } catch (error) {
+            console.error("Setup error:", error);
+            socket.close();
           }
 
-          // Pipe ffmpeg to virtual mic
-          (async () => {
-            try {
-              if (!ffmpeg) return;
-              for await (const chunk of ffmpeg.readable) {
-                await virtualMic.write(chunk);
-              }
-            } catch (error) {
-              console.error("Error in audio pipeline:", error);
-            }
-          })();
-
-          socket.onmessage = async (event) => {
-            if (event.data instanceof ArrayBuffer && ffmpeg) {
-              try {
-                const chunk = new Uint8Array(event.data);
-                await ffmpeg.write(chunk);
-              } catch (error) {
-                console.error("Error processing audio chunk:", error);
-                socket.close();
-              }
-            }
-          };
-
-          socket.onclose = async () => {
-            console.log("WebSocket connection closed");
-            await ffmpeg?.close();
-            await virtualMic.unload();
-            ffmpeg = null;
-          };
-
-          socket.onerror = (error) => {
-            console.error("WebSocket error:", error);
-          };
-        } catch (error) {
-          console.error("Setup error:", error);
-          socket.close();
+          return response;
+        } else {
+          return new Response(
+            await fetch(import.meta.resolve("./client.html"))
+              .then((res) => res.text()),
+            {
+              headers: { "content-type": "text/html" },
+            },
+          );
         }
-
-        return response;
-      } else if (request.url.endsWith("/stop")) {
-        // stop the server and exit
-        await unloadPipeSource();
-        setTimeout(() => Deno.exit(0), 100);
-        return new Response("Server is shutting down");
-      } else {
-        return new Response(
-          await fetch(import.meta.resolve("./client.html"))
-            .then((res) => res.text()),
-          {
-            headers: { "content-type": "text/html" },
-          },
-        );
-      }
-    },
-  );
+      },
+    );
+  });
 }
