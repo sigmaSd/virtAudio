@@ -4,7 +4,7 @@ A web-based audio streaming solution with a graphical user interface. Captures a
 
 This allow you to use your phone for example as a microphone for the pc.
 
-![image](https://github.com/user-attachments/assets/68260d94-67d5-4ffa-8e24-975a80784dc6)
+![image](https://github.com/sigmaSd/virtAudio/blob/b0ead458f2e4ed377b9a540cd4451f012ad87d71/distro/demo.png)
 
 ## Features
 
