@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.sigmasd.VirtAudio</id>
+  <name>VirtAudio</name>
+  <developer_name>Bedis Nbiba</developer_name>
+  <summary>Create virtual microphones from browser audio</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <description>
+    <p>
+      VirtAudio allows you to create virtual microphones from browser audio sources.
+      It enables you to capture and route audio from web browsers to other applications
+      through virtual microphone devices.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.sigmasd.VirtAudio.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window of VirtAudio</caption>
+      <image>https://raw.githubusercontent.com/sigmasd/virtaudio/main/distro/demo.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/sigmasd/virtaudio</url>
+  <url type="bugtracker">https://github.com/sigmasd/virtaudio/issues</url>
+
+  <provides>
+    <binary>virtaudio</binary>
+  </provides>
+
+  <releases>
+    <release version="0.0.9" date="2025-02-16">
+      <description>
+        <p>Initial release of VirtAudio</p>
+      </description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1" />
+</component>

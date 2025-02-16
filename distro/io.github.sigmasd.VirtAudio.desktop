@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=VirtAudio
+Comment=Create virtual microphones from browser audio
+Exec=virtaudio
+Icon=io.github.sigmasd.VirtAudio
+Terminal=false
+Categories=Audio;AudioVideo;Utility;
+Keywords=audio;microphone;virtual;streaming;
