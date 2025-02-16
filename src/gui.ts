@@ -1,4 +1,4 @@
-import * as slint from "npm:slint-ui@1.8.0";
+import * as slint from "npm:slint-ui@1.9.2";
 import { decode } from "npm:@jsquash/png@3.0.1";
 import { qrPng } from "jsr:@sigmasd/qrpng@0.1.3";
 import { main as startServer, unloadPipeSource } from "./main.ts";
