@@ -187,13 +187,23 @@ export function main(
 
           return response;
         } else {
-          return new Response(
-            await fetch(import.meta.resolve("./client.html"))
-              .then((res) => res.text()),
-            {
-              headers: { "content-type": "text/html" },
-            },
-          );
+          const clientUrl = new URL("client.html", import.meta.url);
+          if (clientUrl.protocol === "file:") {
+            return new Response(
+              // workaround for https://github.com/denoland/deno/issues/28129
+              (await Deno.open(clientUrl)).readable,
+              {
+                headers: { "content-type": "text/html" },
+              },
+            );
+          } else {
+            return new Response(
+              await fetch(clientUrl).then((res) => res.text()),
+              {
+                headers: { "content-type": "text/html" },
+              },
+            );
+          }
         }
       },
     );

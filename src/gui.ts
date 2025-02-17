@@ -59,8 +59,14 @@ if (import.meta.main) {
   // https://github.com/slint-ui/slint/issues/5780
   Deno.env.set("WAYLAND_DISPLAY", "");
   // Setup UI
-  const guiSlint = await fetch(import.meta.resolve("./gui.slint"))
-    .then((r) => r.text());
+  const guiUrl = new URL("./gui.slint", import.meta.url);
+  let guiSlint;
+  if (guiUrl.protocol === "file:") {
+    // workaround for https://github.com/denoland/deno/issues/28129
+    guiSlint = await Deno.readTextFile(guiUrl);
+  } else {
+    guiSlint = await fetch(guiUrl).then((r) => r.text());
+  }
   // deno-lint-ignore no-explicit-any
   const ui = slint.loadSource(guiSlint, "main.js") as any;
   const window = ui.MainWindow() as MainWindow;
