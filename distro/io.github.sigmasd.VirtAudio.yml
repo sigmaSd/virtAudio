@@ -1,6 +1,6 @@
 app-id: io.github.sigmasd.VirtAudio
 runtime: org.freedesktop.Platform
-runtime-version: '23.08'
+runtime-version: "23.08"
 sdk: org.freedesktop.Sdk
 command: virtaudio
 finish-args:
@@ -16,8 +16,8 @@ finish-args:
   - --device=input
   # Needed for mesa
   - --device=dri
-  # Allow creating temporary files (for creating virtual mics)
-  - --filesystem=/tmp:create
+  # Allow writing audio to virtual microphones (need to create the virtual_mics directory on the host for pulseaudio to work correctly)
+  - --filesystem=xdg-run/virtual_mics:create
 modules:
   # needed for libinput
   - name: libevdev
