@@ -92,8 +92,13 @@ if (import.meta.main) {
 
   // Generate QR code
   const address = `http://${getLocalIp()}:${serverPort}`;
-  const qrCodePng = qrPng(new TextEncoder().encode(address));
-  const rgba = await decode(qrCodePng);
+  const qrCodePng = qrPng(
+    new TextEncoder().encode(address),
+  );
+  if (!(qrCodePng.buffer instanceof ArrayBuffer)) {
+    throw new Error("Expected ArrayBuffer but got SharedArrayBuffer");
+  }
+  const rgba = await decode(qrCodePng.buffer);
   window.qrCode = {
     width: rgba.width,
     height: rgba.height,
