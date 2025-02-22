@@ -6,6 +6,9 @@ This allow you to use your phone for example as a microphone for the pc.
 
 ![image](https://github.com/sigmaSd/virtAudio/blob/b0ead458f2e4ed377b9a540cd4451f012ad87d71/distro/demo.png)
 
+## Demo
+[demo.webm](https://github.com/user-attachments/assets/34a2ef07-696d-4c3e-afdb-4876e048c18e)
+
 ## Features
 
 - Graphical user interface for easy control
