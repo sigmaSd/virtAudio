@@ -4,6 +4,10 @@ A web-based audio streaming solution with a graphical user interface. Captures a
 
 This allow you to use your phone for example as a microphone for the pc.
 
+<a href='https://flathub.org/apps/io.github.sigmasd.virtaudio'>
+  <img width='240' alt='Download on Flathub' src='https://dl.flathub.org/assets/badges/flathub-badge-i-en.png'/>
+</a>
+
 ![image](https://github.com/sigmaSd/virtAudio/blob/b0ead458f2e4ed377b9a540cd4451f012ad87d71/distro/demo.png)
 
 ## Demo
