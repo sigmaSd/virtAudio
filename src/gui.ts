@@ -1,3 +1,6 @@
+// fix for deno compile
+import "jsr:@sigma/deno-compile-extra@0.8.0/fetchPatch";
+
 import * as slint from "npm:slint-ui@1.10.0";
 import { decode } from "npm:@jsquash/png@3.0.1";
 import { qrPng } from "jsr:@sigmasd/qrpng@0.1.3";
@@ -58,15 +61,11 @@ class Player {
 if (import.meta.main) {
   // Setup UI
   const guiUrl = new URL("./gui.slint", import.meta.url);
-  let guiSlint;
-  if (guiUrl.protocol === "file:") {
-    // workaround for https://github.com/denoland/deno/issues/28129
-    guiSlint = await Deno.readTextFile(guiUrl);
-  } else {
-    guiSlint = await fetch(guiUrl).then((r) => r.text());
-  }
-  // deno-lint-ignore no-explicit-any
-  const ui = slint.loadSource(guiSlint, "main.js") as any;
+  const ui = slint.loadSource(
+    await fetch(guiUrl).then((r) => r.text()),
+    "main.js",
+    // deno-lint-ignore no-explicit-any
+  ) as any;
   const window = ui.MainWindow() as MainWindow;
 
   // Create an audio player

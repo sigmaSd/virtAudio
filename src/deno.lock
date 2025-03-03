@@ -1,12 +1,16 @@
 {
   "version": "4",
   "specifiers": {
+    "jsr:@sigma/deno-compile-extra@0.8.0": "0.8.0",
     "jsr:@sigmasd/qrpng@0.1.3": "0.1.3",
     "npm:@jsquash/png@3.0.1": "3.0.1",
     "npm:slint-ui@1.10.0": "1.10.0",
     "npm:slint-ui@1.10.0-nightly.2025022119": "1.10.0-nightly.2025022119"
   },
   "jsr": {
+    "@sigma/deno-compile-extra@0.8.0": {
+      "integrity": "7a4ae855157863ab7fb038305c0ad20b2108ae0d277dbdae2f70e46d37bc0d9f"
+    },
     "@sigmasd/qrpng@0.1.3": {
       "integrity": "73fac5dc94e23a3082925138549a32712fe167018087d3f2498c86e85d817471"
     }
