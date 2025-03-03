@@ -2,17 +2,32 @@
   "version": "4",
   "specifiers": {
     "jsr:@sigma/deno-compile-extra@0.8.0": "0.8.0",
+    "jsr:@sigma/deno-compile-extra@0.9.0": "0.9.0",
     "jsr:@sigmasd/qrpng@0.1.3": "0.1.3",
+    "jsr:@std/path@*": "1.0.8",
+    "jsr:@std/path@1.0.8": "1.0.8",
     "npm:@jsquash/png@3.0.1": "3.0.1",
     "npm:slint-ui@1.10.0": "1.10.0",
     "npm:slint-ui@1.10.0-nightly.2025022119": "1.10.0-nightly.2025022119"
   },
   "jsr": {
     "@sigma/deno-compile-extra@0.8.0": {
-      "integrity": "7a4ae855157863ab7fb038305c0ad20b2108ae0d277dbdae2f70e46d37bc0d9f"
+      "integrity": "7a4ae855157863ab7fb038305c0ad20b2108ae0d277dbdae2f70e46d37bc0d9f",
+      "dependencies": [
+        "jsr:@std/path@*"
+      ]
+    },
+    "@sigma/deno-compile-extra@0.9.0": {
+      "integrity": "33a53525ce0e2116e147d6104618b665858f92c35e94a9e50ed49e591237e475",
+      "dependencies": [
+        "jsr:@std/path@1.0.8"
+      ]
     },
     "@sigmasd/qrpng@0.1.3": {
       "integrity": "73fac5dc94e23a3082925138549a32712fe167018087d3f2498c86e85d817471"
+    },
+    "@std/path@1.0.8": {
+      "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
     }
   },
   "npm": {

@@ -1,55 +1,90 @@
 {
   "manifest": {
-    "/README.md": {
-      "size": 2230,
-      "checksum": "sha256-b60f77e5573b1456ac57df3c9d71718979c7ceeda0f50f8f9a3354c6ee67c7f8"
-    },
-    "/deno.json": {
-      "size": 272,
-      "checksum": "sha256-6c9f7132ac32e9a163245beec9e9f73b553a57732d5d076b4e1795f4ccbe1aef"
-    },
-    "/src/local-storage-polyfill/mod.ts": {
-      "size": 4566,
-      "checksum": "sha256-83b8f65b57dd3d275185a7d1667a74f1b3c05210bb7832a5bab414605024c660"
+    "/src/is-standalone/mod.test.ts": {
+      "size": 3442,
+      "checksum": "sha256-b03a732187c39f80f43d37f750e65fb58069ec082d2f90d53fb7430a245679db"
     },
     "/.github/workflows/publish-jsr.yml": {
       "size": 345,
       "checksum": "sha256-c369e7d812e6c804e4c221e8a66b375d4e677cfee3d9ba7ef5e8fc7c9696cf51"
     },
-    "/src/local-storage-polyfill/mod.test.ts": {
-      "size": 3759,
-      "checksum": "sha256-299a534643cf66e78cc98d3ab48482466d8d18fbcf745f199aca5fe8bce50148"
-    },
     "/src/fetch-patch/data.txt": {
       "size": 13,
       "checksum": "sha256-dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f"
-    },
-    "/deno.lock": {
-      "size": 25077,
-      "checksum": "sha256-18a6771a724ccdca9159edc69d6f70ea6ac743353009db77fb7f78f01271f320"
     },
     "/src/fetch-patch/mod.test.ts": {
       "size": 3721,
       "checksum": "sha256-900ff5dda51f64d19df35e4ef9e88b69f3b326a2336ed1233e06529ebb66a843"
     },
+    "/deno.lock": {
+      "size": 25077,
+      "checksum": "sha256-18a6771a724ccdca9159edc69d6f70ea6ac743353009db77fb7f78f01271f320"
+    },
     "/src/utils.ts": {
       "size": 1766,
       "checksum": "sha256-0011201817baf4f4b20fc2f419f04b0069d8f49fa322dfa63cc1b68163513ac5"
+    },
+    "/src/fetch-patch/mod.ts": {
+      "size": 2677,
+      "checksum": "sha256-e5b037c954926ce683c39492cf53ed4bd73f242630ffb51552a1fd1c88d998ec"
+    },
+    "/src/local-storage-polyfill/mod.ts": {
+      "size": 4566,
+      "checksum": "sha256-83b8f65b57dd3d275185a7d1667a74f1b3c05210bb7832a5bab414605024c660"
+    },
+    "/README.md": {
+      "size": 2230,
+      "checksum": "sha256-b60f77e5573b1456ac57df3c9d71718979c7ceeda0f50f8f9a3354c6ee67c7f8"
     },
     "/src/is-standalone/mod.ts": {
       "size": 335,
       "checksum": "sha256-e4ecc68578075d4429f7da6ce6b9840d5c13cd080c2a500105bbaaf937eee4c9"
     },
-    "/src/fetch-patch/mod.ts": {
-      "size": 2265,
-      "checksum": "sha256-31f1f9e85568b1246b609dac0723a16a5fd3afa77c392a32a8c72476f039376b"
+    "/src/local-storage-polyfill/mod.test.ts": {
+      "size": 3759,
+      "checksum": "sha256-299a534643cf66e78cc98d3ab48482466d8d18fbcf745f199aca5fe8bce50148"
     },
-    "/src/is-standalone/mod.test.ts": {
-      "size": 3442,
-      "checksum": "sha256-b03a732187c39f80f43d37f750e65fb58069ec082d2f90d53fb7430a245679db"
+    "/deno.json": {
+      "size": 272,
+      "checksum": "sha256-ae886241cf5f93c78004c40d19f922ddee52e6471b1c2ded9439b2e764b85d5f"
     }
   },
   "moduleGraph2": {
+    "/src/fetch-patch/mod.ts": {
+      "dependencies": [
+        {
+          "type": "static",
+          "kind": "import",
+          "specifier": "jsr:@std/path@1.0.8/extname",
+          "specifierRange": [
+            [
+              19,
+              24
+            ],
+            [
+              19,
+              53
+            ]
+          ]
+        },
+        {
+          "type": "static",
+          "kind": "import",
+          "specifier": "../utils.ts",
+          "specifierRange": [
+            [
+              20,
+              36
+            ],
+            [
+              20,
+              49
+            ]
+          ]
+        }
+      ]
+    },
+    "/src/utils.ts": {},
     "/src/local-storage-polyfill/mod.ts": {
       "dependencies": [
         {
@@ -114,25 +149,6 @@
         }
       ]
     },
-    "/src/fetch-patch/mod.ts": {
-      "dependencies": [
-        {
-          "type": "static",
-          "kind": "import",
-          "specifier": "../utils.ts",
-          "specifierRange": [
-            [
-              19,
-              36
-            ],
-            [
-              19,
-              49
-            ]
-          ]
-        }
-      ]
-    },
     "/src/is-standalone/mod.ts": {
       "dependencies": [
         {
@@ -151,8 +167,7 @@
           ]
         }
       ]
-    },
-    "/src/utils.ts": {}
+    }
   },
   "exports": {
     "./localStoragePolyfill": "./src/local-storage-polyfill/mod.ts",

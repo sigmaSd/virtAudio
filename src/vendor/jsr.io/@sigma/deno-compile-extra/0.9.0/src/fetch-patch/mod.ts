@@ -17,6 +17,7 @@
  * @module
  */
 
+import { extname } from "jsr:@std/path@1.0.8/extname";
 import { isStandaloneDenoExe } from "../utils.ts";
 
 /**
@@ -45,12 +46,23 @@ export function patchFetch() {
     // Check if the URL is a file URL
     if (url.startsWith("file://")) {
       try {
+        // Guess content type based on file extension
+        // This is important for some file types like .wasm which does some optimizations based on it
+        let contentType;
+        if (extname(url) === ".wasm") {
+          contentType = "application/wasm";
+        }
+
         const filePath = new URL(url);
         const file = await Deno.open(filePath, { read: true });
 
+        const headers = new Headers(init?.headers);
+        if (contentType) {
+          headers.set("Content-Type", contentType);
+        }
         return new Response(file.readable, {
           status: 200,
-          headers: new Headers(init?.headers), // Keep other headers from init
+          headers,
         });
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {

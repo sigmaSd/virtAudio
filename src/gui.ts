@@ -1,5 +1,5 @@
 // fix for deno compile
-import "jsr:@sigma/deno-compile-extra@0.8.0/fetchPatch";
+import "jsr:@sigma/deno-compile-extra@0.9.0/fetchPatch";
 
 import * as slint from "npm:slint-ui@1.10.0";
 import { decode } from "npm:@jsquash/png@3.0.1";
