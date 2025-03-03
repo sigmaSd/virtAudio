@@ -24,9 +24,10 @@ class VirtualMic {
   }
 
   async start() {
-    const virtualMicPipePath = `${
-      Deno.env.get("XDG_RUNTIME_DIR")
-    }/virtual_mics/virtual_mic_pipe${this.#id}`;
+    const virtualMicsPath = `${Deno.env.get("XDG_RUNTIME_DIR")}/virtual_mics`;
+    await Deno.mkdir(virtualMicsPath, { recursive: true });
+
+    const virtualMicPipePath = `${virtualMicsPath}/virtual_mic_pipe${this.#id}`;
 
     // Create the named pipe if it doesn't exist
     try {
