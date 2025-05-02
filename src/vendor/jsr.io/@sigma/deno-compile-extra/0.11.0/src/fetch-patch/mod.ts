@@ -18,7 +18,6 @@
  */
 
 import { extname } from "jsr:@std/path@1.0.8/extname";
-import { isStandaloneDenoExe } from "../utils.ts";
 
 /**
  * Patches the global fetch function to support file:// URLs in Deno
@@ -34,7 +33,7 @@ import { isStandaloneDenoExe } from "../utils.ts";
  *   .then(res => res.text());
  */
 export function patchFetch() {
-  if (!isStandaloneDenoExe()) {
+  if (!Deno.build.standalone) {
     return;
   }
   const originalFetch = globalThis.fetch;

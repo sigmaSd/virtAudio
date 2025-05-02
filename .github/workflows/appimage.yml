@@ -3,7 +3,7 @@ name: Build and Release AppImage
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
 permissions:
   contents: write

@@ -1,7 +1,7 @@
 // fix for deno compile
-import "jsr:@sigma/deno-compile-extra@0.9.0/fetchPatch";
+import "jsr:@sigma/deno-compile-extra@0.11.0/fetchPatch";
 
-import * as slint from "npm:slint-ui@1.10.0";
+import * as slint from "npm:slint-ui@1.11.0";
 import { decode } from "npm:@jsquash/png@3.0.1";
 import { qrPng } from "jsr:@sigmasd/qrpng@0.1.3";
 import { main as startServer, unloadPipeSource } from "./main.ts";
